@@ -1,4 +1,4 @@
-import logo from "../../assets/logo1.png";
+import logo from "../assets/logo1.png";
 
 
 const Nav = () => {
@@ -6,7 +6,7 @@ const Nav = () => {
     <div>
       <nav className="w-full h-16 bg-blue-500 flex justify-between items-center px-8">
 
-        <div className="flex items-center  font-bold text-3xl text-white transition-transform duration-300 hover:scale-50 ">
+        <div className="flex items-center  font-bold text-3xl text-white transition-transform duration-300 hover:scale-80 ">
 
           <img className=" w-12 h-10 rounded-full object-contain" src={logo} />
 
