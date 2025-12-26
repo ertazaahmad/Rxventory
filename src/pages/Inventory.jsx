@@ -125,7 +125,7 @@ const Inventory = () => {
             <svg
     className="w-6 h-6 text-white"
     fill="none"
-    stroke="currentColor"
+    stroke="black"
     strokeWidth="2"
     viewBox="0 0 24 24"
   >
@@ -134,18 +134,42 @@ const Inventory = () => {
   </svg>
           </button>
           <button className="px-2 py-1 bg-red-400 text-white rounded flex">
-                <img
-    src="/delete.svg"
-    alt="edit"
-    className="w-4 h-5"
+  <svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  className="w-6 h-6 text-white"
+  fill="none"
+  stroke="black"
+  strokeWidth="2"
+>
+  <path
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m3-3h4a1 1 0 011 1v1H9V5a1 1 0 011-1z"
   />
+</svg>
           </button>
           <button className="px-2 py-1 bg-green-400 text-white rounded flex">
-                <img
-    src="/bill.svg"
-    alt="edit"
-    className="w-4 h-5"
+               <svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  className="w-6 h-6 text-white"
+  fill="none"
+  stroke="black"
+  strokeWidth="2"
+>
+  <path
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    d="M7 3h10a2 2 0 012 2v16l-3-2-3 2-3-2-3 2V5a2 2 0 012-2z"
   />
+  <path
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    d="M9 8h6M9 12h6M9 16h4"
+  />
+</svg>
+
           </button>
         </td>
       </tr>
