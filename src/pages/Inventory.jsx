@@ -82,23 +82,71 @@ const Inventory = () => {
             />
           </div>
         </div>
-        <br />
 {/* table */}
-<table className="">
-  <th>Sr. No.</th>
-  <th>Generic Name</th>
-  <th>Brand</th>
-  <th>Batch Number</th>
-  <th>Expiry Date</th>
-  <th>Quantity Left</th>
-  <th>Pack Size</th>
-  <th>Total</th>
-  <th>MRP</th>
-  <th>Unit Type</th>
-  <th>Min. Stock Level</th>
-  <th>Stock Status</th>
-  <th>Actions</th>
-</table>
+<div className="m-4 h-[60vh] overflow-y-auto overflow-x-auto scrollbar-hide">
+  <table className="w-full border-collapse text-left">
+   <thead className="bg-gray-300 sticky top-0 z-10">
+      <tr className="text-sm font-semibold">
+        <th className="p-3 border">Sr. No.</th>
+        <th className="p-3 border">Generic Name</th>
+        <th className="p-3 border">Brand</th>
+        <th className="p-3 border">Batch No.</th>
+        <th className="p-3 border">Expiry</th>
+        <th className="p-3 border">Qty Left</th>
+        <th className="p-3 border">Pack Size</th>
+        <th className="p-3 border">Total</th>
+        <th className="p-3 border">MRP</th>
+        <th className="p-3 border">Unit</th>
+        <th className="p-3 border">Min Stock</th>
+        <th className="p-3 border">Status</th>
+        <th className="p-3 border">Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {/* Empty row for now */}
+      <tr className="bg-white hover:bg-gray-100 border">
+        <td className="p-3 border text-center">1</td>
+        <td className="p-3 border">Paracetamol</td>
+        <td className="p-3 border">Crocin</td>
+        <td className="p-3 border">B123</td>
+        <td className="p-3 border">12/26</td>
+        <td className="p-3 border">50</td>
+        <td className="p-3 border">10 tabs</td>
+        <td className="p-3 border">500</td>
+        <td className="p-3 border">₹25</td>
+        <td className="p-3 border">Tablet</td>
+        <td className="p-3 border">20</td>
+        <td className="p-3 border text-green-600 font-semibold">
+          In Stock
+        </td>
+        <td className="p-2 border flex gap-2 justify-center ">
+          <button className="px-2 py-1 bg-blue-400 text-white rounded flex">
+            <img
+    src="/edit.svg"
+    alt="edit"
+    className="w-4 h-5"
+  />
+          </button>
+          <button className="px-2 py-1 bg-red-400 text-white rounded flex">
+                <img
+    src="/delete.svg"
+    alt="edit"
+    className="w-4 h-5"
+  />
+          </button>
+          <button className="px-2 py-1 bg-green-400 text-white rounded flex">
+                <img
+    src="/bill.svg"
+    alt="edit"
+    className="w-4 h-5"
+  />
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
 
 
       </div>
