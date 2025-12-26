@@ -120,7 +120,7 @@ const Inventory = () => {
         <td className="p-3 border text-green-600 font-semibold">
           In Stock
         </td>
-        <td className="p-2 border flex gap-2 justify-center">
+        <td className="p-2 flex gap-2 justify-center">
           <button className="px-2 py-1 bg-blue-400 text-white rounded flex">
             <svg
     className="w-6 h-6 text-white"
