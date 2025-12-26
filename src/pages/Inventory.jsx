@@ -12,8 +12,10 @@ const Inventory = () => {
   };
 
   return (
+ 
     <div>
       <Nav />
+{/* Top info section */}
       <div className="m-4 p-4 pl-20 bg-gray-200 rounded-xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 gap-x-12 text-sm font-medium">
         <div>
           <p className="text-gray-500">User ID</p>
@@ -46,8 +48,9 @@ const Inventory = () => {
         </div>
       </div>
 
+{/* main */}
       <div className=" min-h-[calc(100vh-11.5rem)] m-4 p-4  bg-gray-200 rounded-xl  text-sm font-medium">
-
+{/* header of main */}
         <div className="flex justify-between">
           <div className="flex gap-4">
             <button className="p-2 font-bold text-white shadow-sm focus:ring-2 focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500">
@@ -79,7 +82,25 @@ const Inventory = () => {
             />
           </div>
         </div>
-        
+        <br />
+{/* table */}
+<table className="">
+  <th>Sr. No.</th>
+  <th>Generic Name</th>
+  <th>Brand</th>
+  <th>Batch Number</th>
+  <th>Expiry Date</th>
+  <th>Quantity Left</th>
+  <th>Pack Size</th>
+  <th>Total</th>
+  <th>MRP</th>
+  <th>Unit Type</th>
+  <th>Min. Stock Level</th>
+  <th>Stock Status</th>
+  <th>Actions</th>
+</table>
+
+
       </div>
     </div>
   );

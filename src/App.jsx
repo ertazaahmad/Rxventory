@@ -6,8 +6,8 @@ import Inventory from './pages/Inventory.jsx'
 const App = () => {
   return (
     <>
-    <Home />
-      <Login />
+    {/* <Home />
+      <Login /> */}
       <Inventory />
     </>
   )
