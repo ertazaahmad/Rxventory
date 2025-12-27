@@ -1,6 +1,6 @@
 import React from "react";
 import Nav from "../components/nav";
-import Btnsearch from "../components/Btnsearch.JSX";
+import Actionbar from "../components/Actionbar.jsx";
 
 const Inventory = () => {
   const user = {
@@ -51,7 +51,7 @@ const Inventory = () => {
       {/* main */}
       <div className=" min-h-[calc(100vh-11.5rem)] m-4 p-4  bg-gray-200 rounded-xl  text-sm font-medium">
         {/* header of main */}
-     <Btnsearch />
+     <Actionbar />
         {/* table */}
         <div className="m-4 h-[60vh] overflow-y-auto overflow-x-auto scrollbar-hide border">
           <table className="w-full border-collapse text-left">
@@ -69,7 +69,23 @@ const Inventory = () => {
                 <th className="p-3 border">Unit</th>
                 <th className="p-3 border">Min Stock</th>
                 <th className="p-3 border">Status</th>
-                <th className="p-3 border">Actions</th>
+                <th className="p-3  border flex gap-6 justify-between"><span className="mt-1">Actions</span>  <button className="bg-gray-400 text-white rounded flex">
+                    <svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 24 24"
+  className="w-6 h-6 text-black"
+  fill="none"
+  stroke="currentColor"
+  strokeWidth="2.5"
+>
+  <path
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    d="M12 5v14M5 12h14"
+  />
+</svg>
+
+                  </button></th>
               </tr>
             </thead>
 

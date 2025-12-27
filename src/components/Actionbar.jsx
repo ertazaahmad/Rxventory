@@ -1,16 +1,31 @@
 import React from 'react'
 
-const Btnsearch = () => {
+const Actionbar = ({
+  primarycolor = "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500" ,
+  secondarycolor = "focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500",
+  extraAction = [],
+}) => {
   return (
     <div>
          <div className="flex justify-between">
           <div className="flex gap-4">
-            <button className="p-2 font-bold text-white shadow-sm focus:ring-2 focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500">
+            <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${primarycolor}`} >
               INVENTORY
             </button>
-            <button className="p-2 font-bold text-white shadow-sm focus:ring-2 focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500">
+            <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${secondarycolor}`} >
               BILLING
             </button>
+
+                {/* 👇 Render ONLY if extraAction exists */}
+        {extraAction.map((action, index) =>(
+          <button
+          key = {index}
+            onClick={action.onClick}
+            className={`${action.className} p-2 font-bold text-white shadow-sm focus:ring-2 `}
+          >
+            {action.label}
+          </button>
+        ))}
           </div>
 
           <div className="relative w-64">
@@ -38,4 +53,4 @@ const Btnsearch = () => {
   )
 }
 
-export default Btnsearch
+export default Actionbar
