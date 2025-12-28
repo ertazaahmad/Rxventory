@@ -10,13 +10,13 @@ const Nav = () => {
 
           <img className="w-8 h-8 md:w-12 md:h-12 rounded-full object-contain" src={logo} alt='Rxventory logo' />
 
-          <p className="-ml-2 pt-1.5">
+          <p className="-ml-1.5 pt-1.5">
             xventory
           </p>
         </div>
 
 {/* left */}
-        <div className="flex items-center gap-2 text-sm md:text-lg font-medium text-white">
+        <div className="flex items-center gap-2 text-md md:text-lg font-medium text-white">
           <button className="w-20 md:w-28 cursor-pointer transition-all duration-300 hover:scale-110 focus:outline-none ">
             Contact Us
           </button>
