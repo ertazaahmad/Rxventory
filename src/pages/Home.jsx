@@ -10,17 +10,17 @@ const Home = () => {
         <Nav />
         <section className="hero flex  justify-center -mt-16">
           <div className="text-center items-center flex flex-col gap-10 mt-50">
-            <h1 className="text-5xl text-white font-bold font-mono leading-18">
+            <h1 className="text-2xl md:text-5xl text-white font-bold font-mono leading-18">
               A Reliable Pharmacy Inventory and
               <br /> Billing System Built for
               <br /> Daily operations
             </h1>
-            <h3 className="text-xl font-medium m-5 text-white">
+            <h3 className="text-lg md:text-xl font-medium m-5 text-white">
               Track medicines, manage expiry dates, and generate bills with
               clarity and control.
             </h3>
-            <button className="items-center h-26 w-90 bg-blue-500 rounded-full transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
-              <span className="text-3xl font-extrabold transition-all duration-300 hover:tracking-wider">Let's Get Started</span>
+            <button className="items-center h-20 w-80 md:h-26 md:w-90 bg-blue-500 rounded-full transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-300">
+              <span className="text-xl md:text-3xl font-extrabold transition-all duration-300 hover:tracking-wider">Let's Get Started</span>
             </button>
           </div>
         </section>
