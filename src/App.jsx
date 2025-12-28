@@ -7,10 +7,10 @@ import Billing from './pages/Billing.jsx'
 const App = () => {
   return (
     <>
-    {/* <Home />
-      <Login /> 
-      <Inventory /> */}
-      <Billing />
+    <Home />
+      {/* <Login /> 
+      <Inventory />
+      <Billing /> */}
     </>
   )
 }
