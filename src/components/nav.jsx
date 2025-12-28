@@ -3,29 +3,29 @@ import logo from "../assets/logo1.png";
 
 const Nav = () => {
   return (
-    <div>
+    
       <nav className="w-full h-16 bg-blue-500 flex justify-between items-center px-8">
 
-        <div className="flex items-center  font-bold text-3xl text-white transition-transform duration-300 hover:scale-80 ">
+        <div className="flex items-center font-bold text-lg md:text-3xl text-white transition-transform duration-300 hover:scale-90 ">
 
-          <img className=" w-12 h-10 rounded-full object-contain" src={logo} />
+          <img className="w-8 h-8 md:w-12 md:h-12 rounded-full object-contain" src={logo} alt='Rxventory logo' />
 
-          <h3 className="-ml-2 pt-1.5">
+          <p className="-ml-2 pt-1.5">
             xventory
-          </h3>
+          </p>
         </div>
 
 {/* left */}
-        <div className="flex items-center gap-2 text-lg font-medium text-white">
-          <button className="w-28 cursor-pointer transition-all duration-300 hover:scale-110 focus:outline-none ">
+        <div className="flex items-center gap-2 text-sm md:text-lg font-medium text-white">
+          <button className="w-20 md:w-28 cursor-pointer transition-all duration-300 hover:scale-110 focus:outline-none ">
             Contact Us
           </button>
-          <button className="w-20 cursor-pointer text-center transition-all duration-300 hover:scale-110 focus:outline-none ">
+          <button className="w-16 md:w-20 cursor-pointer text-center transition-all duration-300 hover:scale-110 focus:outline-none ">
             Login
           </button>
         </div>
       </nav>
-    </div>
+  
   );
 };
 
