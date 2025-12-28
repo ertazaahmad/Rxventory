@@ -32,7 +32,7 @@ const Actionbar = ({
             {/* Input */}
             <input
               type="text"
-              placeholder="Search..."
+              placeholder="Search Medicine..."
               className="w-full py-3 pl-4 pr-12 text-black placeholder-black/70
                bg-gray-300 rounded-xl outline-none
                shadow-md focus:shadow-lg
