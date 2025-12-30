@@ -12,7 +12,7 @@ const Login = () => {
           <h1 className="text-4xl font-bold mt-2">Rxventory</h1>
           <h1 className="text-2xl font-bold mt-2">Login</h1>
 
-          <button className="mt-16 flex w-64 p-3 rounded-lg font-bold items-center justify-center bg-white border hover:bg-gray-50 transition hover:shadow-xl">
+          <button className="mt-16 flex w-64 p-3 rounded-lg font-bold items-center justify-center bg-white border hover:bg-gray-50 transition hover:shadow-xl active:scale-95">
             <img src="/google.svg" alt="Google" className="w-6 h-6" />
             <span className="ml-8">Continue With Google</span>
           </button>

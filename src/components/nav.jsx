@@ -22,7 +22,7 @@ const Nav = () => {
 {/* left */}
         <div className="flex items-center gap-2 text-md md:text-lg font-medium text-white">
           <button className="w-20 md:w-28 cursor-pointer transition-all duration-300 active:scale-110 focus:outline-none ">
-            <a href="mailto:arshertaza@gmail.com">Contact Us</a>
+            <a href="mailto:rxventory@gmail.com">Contact Us</a>
            
           </button>
           <button className="w-16 md:w-20 cursor-pointer text-center transition-all duration-300 active:scale-110 focus:outline-none ">
