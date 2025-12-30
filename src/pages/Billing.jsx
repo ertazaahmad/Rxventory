@@ -1,11 +1,9 @@
 import React from "react";
-import Nav from "../components/nav";
 import Actionbar from "../components/Actionbar.jsx";
 
 const Billing = () => {
   return (
     <div>
-      <Nav />
       <div className=" min-h-[calc(100vh-6rem)] m-4 p-4 pb-1 bg-gray-200 rounded-xl  text-sm font-medium">
         <Actionbar
           primarycolor="focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500"

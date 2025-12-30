@@ -1,5 +1,5 @@
 import React from "react";
-import Nav from "../components/nav";
+
 import Actionbar from "../components/Actionbar.jsx";
 
 const Inventory = () => {
@@ -14,7 +14,7 @@ const Inventory = () => {
 
   return (
     <div>
-      <Nav />
+
       {/* Top info section */}
       <div className="m-4 p-4 pl-20 bg-gray-200 rounded-xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 gap-x-12 text-sm font-medium">
         <div>
