@@ -1,16 +1,16 @@
 import React from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 import Actionbar from "../components/Actionbar.jsx";
 
 const Inventory = () => {
-  const user = {
-    userId: "RX001",
-    name: "Demo User",
-    role: "Owner",
-    clinic: "Demo Clinic",
-    subscription: "Free",
-    login: "24-12-2025",
-  };
+
+   const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
 
   return (
     <div>
@@ -19,32 +19,32 @@ const Inventory = () => {
       <div className="m-4 p-4 pl-20 bg-gray-200 rounded-xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 gap-x-12 text-sm font-medium">
         <div>
           <p className="text-gray-500">User ID</p>
-          <p>{user.userId}</p>
+          <p>{user.userIdx}</p>
         </div>
 
         <div>
           <p className="text-gray-500">User Name</p>
-          <p>{user.name}</p>
+          <p>{user.namex}</p>
         </div>
 
         <div>
           <p className="text-gray-500">Role</p>
-          <p>{user.role}</p>
+          <p>{user.rolex}</p>
         </div>
 
         <div>
           <p className="text-gray-500">Clinic Name</p>
-          <p>{user.clinic}</p>
+          <p>{user.clinicx}</p>
         </div>
 
         <div>
           <p className="text-gray-500">Subscription</p>
-          <p>{user.subscription}</p>
+          <p>{user.subscriptionx}</p>
         </div>
 
         <div>
           <p className="text-gray-500">Last Login</p>
-          <p>{user.login}</p>
+          <p>{user.loginx}</p>
         </div>
       </div>
 

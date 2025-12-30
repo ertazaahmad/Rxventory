@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import React from "react";
 
 import Home from "./pages/Home.jsx";
@@ -13,7 +13,6 @@ const App = () => {
 
 
   return (
-    <BrowserRouter>
       <div className="flex flex-col min-h-screen">
 
         <Nav />
@@ -30,7 +29,6 @@ const App = () => {
         <Footer />
 
       </div>
-    </BrowserRouter>
   );
 };
 

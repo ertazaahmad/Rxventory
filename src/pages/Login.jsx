@@ -1,8 +1,16 @@
 import { auth } from "../firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Login = () => {
+
+    const { user } = useAuth();
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const navigate = useNavigate();
 
