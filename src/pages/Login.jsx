@@ -1,6 +1,27 @@
-import React from "react";
+import { auth } from "../firebase";
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 
 const Login = () => {
+
+  const navigate = useNavigate();
+
+  const handleGoogleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+
+      console.log("User:", result.user);
+
+      // redirect after login
+      navigate("/");
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
+  };
+
+
   return (
     <div className="min-h-screen w-full bg-[url('/src/assets/login1.svg')] bg-no-repeat bg-cover">
       
@@ -12,7 +33,8 @@ const Login = () => {
           <h1 className="text-4xl font-bold mt-2">Rxventory</h1>
           <h1 className="text-2xl font-bold mt-2">Login</h1>
 
-          <button className="mt-16 flex w-64 p-3 rounded-lg font-bold items-center justify-center bg-white border hover:bg-gray-50 transition hover:shadow-xl active:scale-95">
+          <button onClick={handleGoogleLogin} 
+          className="mt-16 flex w-64 p-3 rounded-lg font-bold items-center justify-center bg-white border hover:bg-gray-50 transition hover:shadow-xl active:scale-95">
             <img src="/google.svg" alt="Google" className="w-6 h-6" />
             <span className="ml-8">Continue With Google</span>
           </button>
