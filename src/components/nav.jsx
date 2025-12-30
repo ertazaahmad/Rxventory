@@ -1,8 +1,14 @@
 import logo from "../assets/logo1.png";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 
-const Nav = () => {
+const Nav = ({ isLoggedIn, setIsLoggedIn }) => {
+  const navigate = useNavigate();
+
+  const logoutHandler = () => {
+    setIsLoggedIn(false);
+    navigate("/");
+  };
 
 
 
@@ -25,6 +31,10 @@ const Nav = () => {
             <a href="mailto:rxventory@gmail.com">Contact Us</a>
            
           </button>
+
+
+
+          
           <button className="w-16 md:w-20 cursor-pointer text-center transition-all duration-300 active:scale-110 focus:outline-none ">
       <Link to = '/login'>Login</Link>
     

@@ -10,6 +10,8 @@ import Nav from "./components/nav.jsx";
 import Footer from "./components/Footer.jsx";
 
 const App = () => {
+
+
   return (
     <BrowserRouter>
       <div className="flex flex-col min-h-screen">
