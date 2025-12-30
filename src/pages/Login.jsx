@@ -31,13 +31,11 @@ const Login = () => {
 
 
   return (
-    <div className="min-h-screen w-full bg-[url('/src/assets/login1.svg')] bg-no-repeat bg-cover">
+    <div className="md:min-h-[calc(100vh-100px)] min-h-[calc(100vh-120px)] w-full bg-[url('/src/assets/login1.svg')] bg-no-repeat bg-cover items-center flex justify-center">
       
-      {/* Centering wrapper */}
-      <div className="flex min-h-screen items-center justify-center">
-        
+   
         {/* Login card */}
-        <div className="flex flex-col w-80 items-center bg-blue-100 rounded-2xl p-6 shadow-xl hover:shadow-2xl transition">
+        <div className="flex flex-col w-80 items-center bg-blue-100 rounded-2xl p-12  shadow-xl hover:shadow-2xl transition">
           <h1 className="text-4xl font-bold mt-2">Rxventory</h1>
           <h1 className="text-2xl font-bold mt-2">Login</h1>
 
@@ -54,7 +52,6 @@ const Login = () => {
         </div>
 
       </div>
-    </div>
   );
 };
 
