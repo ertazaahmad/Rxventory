@@ -14,7 +14,7 @@ const Login = () => {
       console.log("User:", result.user);
 
       // redirect after login
-      navigate("/");
+      navigate("/inventory");
     } catch (error) {
       console.error(error);
       alert(error.message);
