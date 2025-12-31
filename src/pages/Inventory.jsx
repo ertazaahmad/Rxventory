@@ -35,7 +35,7 @@ useEffect(() => {
 }, [user]);
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/" />;
   }
 
   if (!userData) {
