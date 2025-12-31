@@ -1,8 +1,10 @@
-import { auth } from "../firebase";
+import { auth, db } from "../firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import {doc, getDoc, setDoc, serverTimestamp, runTransaction} from "firebase/firestore";
+
 
 const Login = () => {
 
@@ -19,15 +21,64 @@ const Login = () => {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
 
-      console.log("User:", result.user);
+const user = result.user; // Firebase Auth user
 
-      // redirect after login
-      navigate("/inventory");
-    } catch (error) {
-      console.error(error);
-      alert(error.message);
+    // reference to Firestore document
+    const userRef = doc(db, "users", user.uid);
+
+    // check if user already exists
+    const userSnap = await getDoc(userRef);
+
+    // if first login → create user document
+    if (!userSnap.exists()) {
+
+ const counterRef = doc(db, "counters", "users");
+
+      const newUserId = await runTransaction(db, async (transaction) => {
+        const counterSnap = await transaction.get(counterRef);
+
+        let lastNumber = 0;
+        if (counterSnap.exists()) {
+          lastNumber = counterSnap.data().lastUserNumber;
+        }
+
+        const nextNumber = lastNumber + 1;
+
+        transaction.update(counterRef, {
+          lastUserNumber: nextNumber,
+        });
+
+        return `RX${String(nextNumber).padStart(4, "0")}`;
+      });
+
+
+      await setDoc(userRef, {
+        userId: newUserId,
+        name: user.displayName || "",
+        email: user.email || "",
+        role: "",
+        clinicName: "",
+        subscription: "free",
+        createdAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+      });
+    } else {
+      // if returning user → just update last login
+      await setDoc(
+        userRef,
+        { lastLogin: serverTimestamp() },
+        { merge: true }
+      );
     }
-  };
+
+    // redirect after login
+    navigate("/inventory");
+
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+};
 
 
   return (

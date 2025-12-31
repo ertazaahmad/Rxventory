@@ -1,57 +1,104 @@
 import React from "react";
+import { useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-
 import Actionbar from "../components/Actionbar.jsx";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 const Inventory = () => {
+  const { user } = useAuth();
+  const [userData, setUserData] = useState(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [customName, setCustomName] = useState("");
+  const [clinicName, setClinicName] = useState("");
 
-   const { user } = useAuth();
+useEffect(() => {
+  if (!user) return;
+
+  const fetchUserData = async () => {
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      setUserData(data);
+
+      // show modal only first time
+      if (!data.clinicName) {
+        setShowProfileModal(true);
+      }
+    }
+  };
+
+  fetchUserData();
+}, [user]);
 
   if (!user) {
     return <Navigate to="/login" />;
   }
 
+  if (!userData) {
+    return <p>Loading...</p>;
+  }
+
+
+  const handleSaveProfile = async () => {
+  if (!customName || !clinicName) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const userRef = doc(db, "users", user.uid);
+
+  await setDoc(
+    userRef,
+    {
+      name: customName,
+      clinicName: clinicName,
+    },
+    { merge: true }
+  );
+
+  // update local UI instantly
+  setUserData((prev) => ({
+    ...prev,
+    name: customName,
+    clinicName: clinicName,
+  }));
+
+  setShowProfileModal(false);
+};
+
+
   return (
+
     <div>
-
       {/* Top info section */}
-      <div className="m-4 p-4 pl-20 bg-gray-200 rounded-xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-4 gap-x-12 text-sm font-medium">
+      <div className="m-4 p-4 pl-20 bg-gray-200 rounded-xl grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-y-4 gap-x-12 text-sm font-medium text-gray-800">
         <div>
-          <p className="text-gray-500">User ID</p>
-          <p>{user.userIdx}</p>
+          <p>User ID: {userData.userId}</p>
         </div>
 
         <div>
-          <p className="text-gray-500">User Name</p>
-          <p>{user.namex}</p>
+          <p>Name: {userData.name}</p>
+        </div>
+
+
+        <div>
+          <p>Clinic: {userData.clinicName}</p>
         </div>
 
         <div>
-          <p className="text-gray-500">Role</p>
-          <p>{user.rolex}</p>
+          <p>Subscription: {userData.subscription}</p>
         </div>
 
-        <div>
-          <p className="text-gray-500">Clinic Name</p>
-          <p>{user.clinicx}</p>
-        </div>
-
-        <div>
-          <p className="text-gray-500">Subscription</p>
-          <p>{user.subscriptionx}</p>
-        </div>
-
-        <div>
-          <p className="text-gray-500">Last Login</p>
-          <p>{user.loginx}</p>
-        </div>
       </div>
 
       {/* main */}
       <div className=" min-h-[calc(100vh-11.5rem)] m-4 p-4  bg-gray-200 rounded-xl  text-sm font-medium">
         {/* header of main */}
-     <Actionbar />
+        <Actionbar />
         {/* table */}
         <div className="m-4 h-[60vh] overflow-y-auto overflow-x-auto scrollbar-hide border">
           <table className="w-full border-collapse text-left">
@@ -69,23 +116,25 @@ const Inventory = () => {
                 <th className="p-3 border">Unit</th>
                 <th className="p-3 border">Min Stock</th>
                 <th className="p-3 border">Status</th>
-                <th className="p-3  border flex gap-6 justify-between"><span className="mt-1">Actions</span>  <button className="bg-gray-400 text-white rounded flex">
+                <th className="p-3  border flex gap-6 justify-between">
+                  <span className="mt-1">Actions</span>{" "}
+                  <button className="bg-gray-400 text-white rounded flex">
                     <svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 24 24"
-  className="w-6 h-6 text-black"
-  fill="none"
-  stroke="currentColor"
-  strokeWidth="2.5"
->
-  <path
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    d="M12 5v14M5 12h14"
-  />
-</svg>
-
-                  </button></th>
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      className="w-6 h-6 text-black"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M12 5v14M5 12h14"
+                      />
+                    </svg>
+                  </button>
+                </th>
               </tr>
             </thead>
 
@@ -865,6 +914,43 @@ const Inventory = () => {
           </table>
         </div>
       </div>
+
+
+{showProfileModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white p-6 rounded-xl w-96">
+          <h2 className="text-xl font-bold mb-4">Complete Profile</h2>
+
+          <input
+            type="text"
+            placeholder="Your Name"
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            className="w-full border p-2 mb-3"
+          />
+
+          <input
+            type="text"
+            placeholder="Clinic Name"
+            value={clinicName}
+            onChange={(e) => setClinicName(e.target.value)}
+            className="w-full border p-2 mb-4"
+          />
+
+          <button
+            onClick={handleSaveProfile}
+            className="w-full bg-blue-600 text-white p-2 rounded"
+          >
+            Save & Continue
+          </button>
+        </div>
+      </div>
+    )}
+
+
+
+
+
     </div>
   );
 };
