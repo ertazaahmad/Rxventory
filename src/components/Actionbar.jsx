@@ -9,10 +9,10 @@ const Actionbar = ({
     <div>
          <div className="flex justify-between">
           <div className="flex md:gap-4 gap-2">
-            <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${primarycolor}`} >
+            <button className={`md:p-2 p-0 font-bold text-white shadow-sm focus:ring-2 ${primarycolor}`} >
               INVENTORY
             </button>
-            <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${secondarycolor}`} >
+            <button className={`md:p-2 p-0 font-bold text-white shadow-sm focus:ring-2 ${secondarycolor}`} >
               BILLING
             </button>
 
@@ -21,7 +21,7 @@ const Actionbar = ({
           <button
           key = {index}
             onClick={action.onClick}
-            className={`${action.className} p-2 font-bold text-white shadow-sm focus:ring-2 `}
+            className={`${action.className} md:p-2 p-0 font-bold text-white shadow-sm focus:ring-2 `}
           >
             {action.label}
           </button>
