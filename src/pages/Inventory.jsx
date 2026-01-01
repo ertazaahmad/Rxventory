@@ -163,6 +163,7 @@ const Inventory = () => {
       
 
         {/* TABLE */}
+        <div className="md:m-4 mt-8 print-table-wrapper scrollbar-hide border">
         <table className="w-full border-collapse text-left mt-4">
           <thead className="bg-gray-300">
             <tr>
@@ -219,6 +220,7 @@ const Inventory = () => {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* PRINT FOOTER */}
         <div className="print-only print-watermark">RXVENTORY</div>
