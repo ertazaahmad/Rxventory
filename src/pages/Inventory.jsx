@@ -124,7 +124,7 @@ useEffect(() => {
                 <th className="p-3 border">Min Stock</th>
                 <th className="p-3 border">Status</th>
                 <th className="p-3  border flex gap-6 justify-between">
-                  <span className="mt-1">Actions</span>{" "}
+                  <span className="">Actions</span>{" "}
                   <button className="bg-gray-400 text-white rounded flex">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
