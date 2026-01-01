@@ -41,10 +41,10 @@ const Actionbar = ({
       </div>
 
       {/* SEARCH INPUT */}
-      <div className="relative w-64">
+      <div className="relative w-64 ml-2">
         <input
           type="text"
-          placeholder="Search by generic name..."
+          placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="border px-3 py-2 rounded w-full"

@@ -98,7 +98,13 @@ const Inventory = () => {
       field === "minStock" ? Number(value) : med.minStock;
 
     updated.total = qty * pack;
-    updated.status = qty <= minStock ? "Low Stock" : "In Stock";
+    if (qty === 0) {
+  updated.status = "Out of Stock";
+} else if (qty <= minStock) {
+  updated.status = "Low Stock";
+} else {
+  updated.status = "In Stock";
+}
 
     await updateDoc(ref, updated);
 
