@@ -28,7 +28,7 @@ const Actionbar = ({
         ))}
           </div>
 
-          <div className="relative md:w-64 w-40">
+          <div className="relative w-64">
             {/* Input */}
             <input
               type="text"
