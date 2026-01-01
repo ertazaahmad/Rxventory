@@ -20,6 +20,32 @@ const Inventory = () => {
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [userData, setUserData] = useState(null);
+  const [profileName, setProfileName] = useState("");
+const [profileClinic, setProfileClinic] = useState("");
+
+
+const handleSaveProfile = async () => {
+  if (!user) return;
+  if (!profileName.trim() || !profileClinic.trim()) {
+    alert("Please fill all fields");
+    return;
+  }
+
+  const ref = doc(db, "users", user.uid);
+
+  await updateDoc(ref, {
+    name: profileName.trim(),
+    clinicName: profileClinic.trim(),
+  });
+
+  setUserData((prev) => ({
+    ...prev,
+    name: profileName.trim(),
+    clinicName: profileClinic.trim(),
+  }));
+};
+
+
 
   /* ================= FETCH ================= */
   const fetchMedicines = async () => {
@@ -51,6 +77,18 @@ const Inventory = () => {
 
   fetchUserData();
 }, [user]);
+
+
+const shouldShowProfilePopup =
+  !userData ||
+  !userData.name ||
+  userData.name.trim() === "" ||
+  !userData.clinicName ||
+  userData.clinicName.trim() === "";
+
+
+
+
 
   useEffect(() => {
     fetchMedicines();
@@ -186,7 +224,43 @@ const deleteMedicine = async (medicineId) => {
 
   /* ================= UI ================= */
   return (
+
+
     <div className="p-4">
+
+
+{shouldShowProfilePopup && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-xl w-96">
+      <h2 className="text-xl font-bold mb-4">Complete Profile</h2>
+
+      <input
+        type="text"
+        placeholder="Your Name"
+        value={profileName}
+        onChange={(e) => setProfileName(e.target.value)}
+        className="w-full border p-2 mb-3"
+      />
+
+      <input
+        type="text"
+        placeholder="Clinic Name"
+        value={profileClinic}
+        onChange={(e) => setProfileClinic(e.target.value)}
+        className="w-full border p-2 mb-4"
+      />
+
+      <button
+        onClick={handleSaveProfile}
+        className="w-full bg-blue-600 text-white p-2 rounded"
+      >
+        Save & Continue
+      </button>
+    </div>
+  </div>
+)}
+
+
 
 {/* ================= INFO SECTION ================= */}
 <div className="mb-4 bg-gray-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-medium">
