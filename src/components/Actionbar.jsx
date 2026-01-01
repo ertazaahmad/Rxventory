@@ -1,56 +1,64 @@
-import React from 'react'
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const Actionbar = ({
-  primarycolor = "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500" ,
+  primarycolor = "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
   secondarycolor = "focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500",
   extraAction = [],
+  search = "",
+  setSearch = () => {},
 }) => {
-  return (
-    <div>
-         <div className="flex justify-between">
-          <div className="flex md:gap-4 gap-2">
-            <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${primarycolor}`} >
-              INVENTORY
-            </button>
-            <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${secondarycolor}`} >
-              BILLING
-            </button>
+  const navigate = useNavigate();
 
-                {/* 👇 Render ONLY if extraAction exists */}
-        {extraAction.map((action, index) =>(
+  return (
+    <div className="flex justify-between items-center no-print">
+
+      {/* LEFT BUTTONS */}
+      <div className="flex md:gap-4 gap-2">
+        <button
+          onClick={() => navigate("/inventory")}
+          className={`p-2 font-bold active:scale-95 text-white shadow-sm focus:ring-2 ${primarycolor}`}
+        >
+          INVENTORY
+        </button>
+
+        <button
+          onClick={() => navigate("/billing")}
+          className={`p-2 font-bold active:scale-95 text-white shadow-sm focus:ring-2 ${secondarycolor}`}
+        >
+          BILLING
+        </button>
+
+        {extraAction.map((action, index) => (
           <button
-          key = {index}
+            key={index}
             onClick={action.onClick}
-            className={`${action.className} p-2 font-bold text-white shadow-sm focus:ring-2 `}
+            className={`${action.className} p-2 font-bold active:scale-95 text-white shadow-sm focus:ring-2`}
           >
             {action.label}
           </button>
         ))}
-          </div>
+      </div>
 
-          <div className="relative w-64">
-            {/* Input */}
-            <input
-              type="text"
-              placeholder="Search Medicine..."
-              className="w-full py-3 ml-2 pl-4 pr-12 text-black placeholder-black/70
-               bg-gray-300 rounded-xl outline-none
-               shadow-md focus:shadow-lg
-               focus:ring-2 focus:ring-gray-500/40
- transition"
-            />
+      {/* SEARCH INPUT */}
+      <div className="relative w-64">
+        <input
+          type="text"
+          placeholder="Search by generic name..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="border px-3 py-2 rounded w-full"
+        />
 
-            {/* Search Icon */}
-            <img
-              src="/search.svg"
-              alt="Search"
-              className="absolute right-4 top-1/2 -translate-y-1/2
-               w-5 h-5 opacity-60 pointer-events-none"
-            />
-          </div>
-        </div>
+        <img
+          src="/search.svg"
+          alt="Search"
+          className="absolute right-3 top-1/2 -translate-y-1/2
+          w-5 h-5 opacity-60 pointer-events-none"
+        />
+      </div>
     </div>
-  )
-}
+  );
+};
 
-export default Actionbar
+export default Actionbar;

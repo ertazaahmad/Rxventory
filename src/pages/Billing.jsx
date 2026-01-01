@@ -2,6 +2,7 @@ import React from "react";
 import Actionbar from "../components/Actionbar.jsx";
 
 const Billing = () => {
+
   return (
     <div>
       <div className=" min-h-[calc(100vh-6rem)] m-4 p-4 pb-1 bg-gray-200 rounded-xl  text-sm font-medium">
@@ -13,7 +14,7 @@ const Billing = () => {
               label: "PRINT",
               className:
                 "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
-              onClick: () => console.log("BILLPRINTED"),
+              onClick: () => window.print(),
             },
             {
               label: "NEW BILL",

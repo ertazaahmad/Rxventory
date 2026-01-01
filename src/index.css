@@ -10,3 +10,166 @@
   scrollbar-width: none;     /* Firefox */
 }
 
+.print-only {
+  display: none;
+}
+
+@media print {
+  
+
+    /* show print-only content during printing */
+  .print-only {
+    display: block !important;
+  }
+
+   /* ---------- HEADER ---------- */
+  .print-header {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+  }
+
+  .print-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 2px;
+  }
+
+  .print-subtitle {
+    font-size: 11px;
+    margin-top: 2px;
+  }
+
+  /* ---------- DATE / TIME ---------- */
+  .print-meta {
+    position: fixed;
+    top: 12px;
+    right: 20px;
+    font-size: 10px;
+  }
+
+  /* ---------- FOOTER ---------- */
+  .print-footer {
+    position: fixed;
+    bottom: 10px;
+    right: 20px;
+    font-size: 10px;
+  }
+
+  /* ---------- WATERMARK ---------- */
+  .print-watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-size: 80px;
+    font-weight: 800;
+    color: rgba(0, 0, 0, 0.05);
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* ---------- PAGE NUMBER ---------- */
+  .pageNumber::after {
+    content: counter(page);
+  }
+
+  /* ---------- PAGE SETUP ---------- */
+  @page {
+    margin: 10mm;
+  }
+
+  /* push content below header */
+  #print-area {
+    margin-top: 60px;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  #print-area,
+  #print-area * {
+    visibility: visible;
+  }
+
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+    table {
+    width: 100%;
+    margin: 0 auto;   /* center the table */
+    table-layout: fixed;
+  }
+
+  th, td {
+    font-size: 10px;
+    padding: 6px;
+    word-wrap: break-word;
+  }
+    .print-table-wrapper {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+    .print-header {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+
+  /* push content down so it doesn't overlap header */
+  #print-area {
+    margin-top: 40px;
+  }
+}
+
+@media print {
+  tr {
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+}
+
+
+@media print {
+  /* hide buttons, actions, UI */
+  .no-print {
+    display: none !important;
+  }
+
+  /* hide last column (Actions) completely */
+  table th:last-child,
+  table td:last-child {
+    display: none !important;
+  }
+
+  /* make table fit page */
+  table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  th, td {
+    font-size: 10px;
+    padding: 6px;
+    word-wrap: break-word;
+  }
+}
+
+
