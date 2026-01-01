@@ -98,7 +98,14 @@ useEffect(() => {
       {/* main */}
       <div className=" min-h-[calc(100vh-11.5rem)] m-4 p-4  bg-gray-200 rounded-xl  text-sm font-medium">
         {/* header of main */}
-        <Actionbar />
+        <Actionbar 
+        extraAction={[
+            {
+              label: "PRINT",
+              className:
+                "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
+              onClick: () => console.log("BILLPRINTED"),
+            },]}/>
         {/* table */}
         <div className="m-4 h-[60vh] overflow-y-auto overflow-x-auto scrollbar-hide border">
           <table className="w-full border-collapse text-left">

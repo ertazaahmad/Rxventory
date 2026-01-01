@@ -58,7 +58,7 @@ const user = result.user; // Firebase Auth user
         email: user.email || "",
         role: "",
         clinicName: "",
-        subscription: "free",
+        subscription: "Free",
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp(),
       });
