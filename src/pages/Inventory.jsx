@@ -1,240 +1,314 @@
 import React, { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Actionbar from "../components/Actionbar";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  getDoc,          // ✅ ADD THIS
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../firebase";
+import Actionbar from "../components/Actionbar";
 
 const Inventory = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
 
+  const [medicines, setMedicines] = useState([]);
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState("");
   const [userData, setUserData] = useState(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [customName, setCustomName] = useState("");
-  const [clinicName, setClinicName] = useState("");
-  const [search, setSearch] = useState("");
 
-  /* ---------------- STATIC MEDICINES (TEMP) ---------------- */
-  const medicines = Array.from({ length: 60 }).map((_, i) => ({
-    id: i + 1,
-    generic: i === 0 ? "Paracetamol" : "Amoxicillin",
-    brand: i === 0 ? "Crocin" : "Mox",
-    batch: i === 0 ? "B123" : "A221",
-    expiry: i === 0 ? "12/26" : "10/25",
-    qty: i === 0 ? 50 : 30,
-    pack: i === 0 ? "10 tabs" : "6 caps",
-    total: i === 0 ? 500 : 180,
-    mrp: i === 0 ? 25 : 80,
-    unit: i === 0 ? "Tablet" : "Capsule",
-    minStock: i === 0 ? 20 : 10,
-    status: "In Stock",
-  }));
-
-  const filteredMedicines = medicines.filter((med) =>
-    med.generic.toLowerCase().includes(search.toLowerCase())
-  );
-
-  /* ---------------- FETCH USER ---------------- */
-  useEffect(() => {
+  /* ================= FETCH ================= */
+  const fetchMedicines = async () => {
     if (!user) return;
 
-    const fetchUserData = async () => {
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
+    const ref = collection(db, "users", user.uid, "medicines");
+    const snap = await getDocs(ref);
 
-      if (snap.exists()) {
-        const data = snap.data();
-        setUserData(data);
-        if (!data.clinicName) setShowProfileModal(true);
-      }
-    };
+    const list = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
 
-    fetchUserData();
+    setMedicines(list);
+  };
+
+
+  useEffect(() => {
+  if (!user) return;
+
+  const fetchUserData = async () => {
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+      setUserData(snap.data());
+    }
+  };
+
+  fetchUserData();
+}, [user]);
+
+  useEffect(() => {
+    fetchMedicines();
   }, [user]);
 
-  if (!user) return <Navigate to="/" />;
-  if (!userData) return <p>Loading...</p>;
+  /* ================= ADD EMPTY MEDICINE ================= */
+  const addEmptyMedicine = async () => {
+    if (!user) return;
 
-  /* ---------------- SAVE PROFILE ---------------- */
-  const handleSaveProfile = async () => {
-    if (!customName || !clinicName) return alert("Fill all fields");
+    const ref = collection(db, "users", user.uid, "medicines");
 
-    const ref = doc(db, "users", user.uid);
-    await setDoc(ref, { name: customName, clinicName }, { merge: true });
+    await addDoc(ref, {
+      generic: "",
+      brand: "",
+      batch: "",
+      expiry: "",
+      qty: 0,
+      pack: 1,
+      total: 0,
+      unit: "Tablet",
+      minStock: 0,
+      status: "In Stock",
+      createdAt: serverTimestamp(),
+    });
 
-    setUserData((p) => ({ ...p, name: customName, clinicName }));
-    setShowProfileModal(false);
+    fetchMedicines();
   };
 
-  /* ---------------- PRINT ---------------- */
-  const handlePrintTable = () => {
-    window.scrollTo(0, 0);
-    window.print();
+  /* ================= SAVE INLINE EDIT ================= */
+  const saveField = async (med, field) => {
+    if (!user) return;
+
+    const ref = doc(db, "users", user.uid, "medicines", med.id);
+
+    const value =
+      typeof editValue === "string" && !isNaN(editValue)
+        ? Number(editValue)
+        : editValue;
+
+    let updated = { [field]: value };
+
+    const qty = field === "qty" ? Number(value) : med.qty;
+    const pack = field === "pack" ? Number(value) : med.pack;
+    const minStock =
+      field === "minStock" ? Number(value) : med.minStock;
+
+    updated.total = qty * pack;
+    updated.status = qty <= minStock ? "Low Stock" : "In Stock";
+
+    await updateDoc(ref, updated);
+
+    setEditingCell(null);
+    setEditValue("");
+    fetchMedicines();
   };
 
+
+const deleteMedicine = async (medicineId) => {
+  console.log("DELETE ID:", medicineId);
+  console.log("USER ID:", user.uid);
+
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this medicine?"
+  );
+
+  if (!confirmDelete) return;
+
+  const ref = doc(db, "users", user.uid, "medicines", medicineId);
+  await deleteDoc(ref);
+
+  fetchMedicines();
+};
+
+  /* ================= EDITABLE CELL ================= */
+  const EditableCell = ({
+    med,
+    field,
+    value,
+    type = "text",
+    options = [],
+  }) => {
+    const isEditing =
+      editingCell?.id === med.id && editingCell?.field === field;
+
+    return (
+      <td className="border p-2">
+        {isEditing ? (
+          type === "select" ? (
+            <select
+              autoFocus
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={() => saveField(med, field)}
+              className="border px-1 py-1"
+            >
+              {options.map((o) => (
+                <option key={o}>{o}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              autoFocus
+              type={type}
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={() => saveField(med, field)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") saveField(med, field);
+              }}
+              className="border px-1 w-full"
+            />
+          )
+        ) : (
+          <span
+            className="cursor-pointer"
+            onClick={() => {
+              setEditingCell({ id: med.id, field });
+              setEditValue(value ?? "");
+            }}
+          >
+            {value || "—"}
+          </span>
+        )}
+      </td>
+    );
+  };
+
+  /* ================= UI ================= */
   return (
-    <>
-      {/* ================= SCREEN UI ================= */}
-      <div className="p-4 no-print">
-        {/* INFO */}
-        <div className="bg-gray-200 rounded-xl p-4 mb-4 grid grid-cols-4 gap-4 text-sm font-medium">
-          <p>User ID: {userData.userId}</p>
-          <p>Name: {userData.name}</p>
-          <p>Clinic: {userData.clinicName}</p>
-          <p>Subscription: {userData.subscription}</p>
-        </div>
+    <div className="p-4">
 
-        {/* ACTION BAR */}
-        <Actionbar
-          search={search}
-          setSearch={setSearch}
-          extraAction={[
-            {
-              label: "PRINT",
-              className:
-                "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
-              onClick: handlePrintTable,
-            },
-          ]}
-        />
+{/* ================= INFO SECTION ================= */}
+<div className="mb-4 bg-gray-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-medium">
+  <div>
+    <span className="text-gray-600">User ID:</span>{" "}
+    <span className="font-semibold">
+      {userData?.userId || "—"}
+    </span>
+  </div>
 
-        {/* TABLE (SCREEN) */}
-        <div className="mt-6 overflow-x-auto">
-          <table className="w-full border-collapse border">
-            <thead className="bg-gray-300">
-              <tr>
-                {[
-                  "Sr",
-                  "Generic",
-                  "Brand",
-                  "Batch",
-                  "Expiry",
-                  "Qty",
-                  "Pack",
-                  "Total",
-                  "MRP",
-                  "Unit",
-                  "Min",
-                  "Status",
-                  "Actions",
-                ].map((h) => (
-                  <th key={h} className="border p-2 text-left">
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredMedicines.map((med, i) => (
-                <tr key={med.id}>
-                  <td className="border p-2">{i + 1}</td>
-                  <td className="border p-2">{med.generic}</td>
-                  <td className="border p-2">{med.brand}</td>
-                  <td className="border p-2">{med.batch}</td>
-                  <td className="border p-2">{med.expiry}</td>
-                  <td className="border p-2">{med.qty}</td>
-                  <td className="border p-2">{med.pack}</td>
-                  <td className="border p-2">{med.total}</td>
-                  <td className="border p-2">₹{med.mrp}</td>
-                  <td className="border p-2">{med.unit}</td>
-                  <td className="border p-2">{med.minStock}</td>
-                  <td className="border p-2 text-green-600">{med.status}</td>
-                  <td className="border p-2">
-                    <button className="px-2 py-1 bg-blue-400 text-white rounded mr-2">
-                      Edit
-                    </button>
-                    <button className="px-2 py-1 bg-red-400 text-white rounded">
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+  <div>
+    <span className="text-gray-600">Name:</span>{" "}
+    <span className="font-semibold">
+      {userData?.name || user?.displayName || "—"}
+    </span>
+  </div>
 
-      {/* ================= PRINT ONLY ================= */}
-      <div id="print-only-area" className="print-only">
-        <div className="print-header">
-          <h1>RXVENTORY</h1>
-          <p>Clinic: {userData.clinicName}</p>
-          <p>Printed on: {new Date().toLocaleString()}</p>
-        </div>
+  <div>
+    <span className="text-gray-600">Clinic:</span>{" "}
+    <span className="font-semibold">
+      {userData?.clinicName || "Rxventory"}
+    </span>
+  </div>
 
-        <table>
-          <thead>
+  <div>
+    <span className="text-gray-600">Subscription:</span>{" "}
+    <span className="font-semibold text-green-700">
+      {userData?.subscription || "Free"}
+    </span>
+  </div>
+</div>
+
+
+
+      <Actionbar
+        extraAction={[
+          {
+            label: "+",
+            className: "bg-green-500 hover:bg-green-600 rounded px-3",
+            onClick: addEmptyMedicine,
+          },
+        ]}
+      />
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead className="bg-gray-200">
             <tr>
-              {[
-                "Sr",
-                "Generic",
-                "Brand",
-                "Batch",
-                "Expiry",
-                "Qty",
-                "Pack",
-                "Total",
-                "MRP",
-                "Unit",
-                "Min",
-                "Status",
-              ].map((h) => (
-                <th key={h}>{h}</th>
-              ))}
+              <th className="border p-2">Sr</th>
+              <th className="border p-2">Generic</th>
+              <th className="border p-2">Brand</th>
+              <th className="border p-2">Batch</th>
+              <th className="border p-2">Expiry</th>
+              <th className="border p-2">Qty</th>
+              <th className="border p-2">Pack</th>
+              <th className="border p-2">Total</th>
+              <th className="border p-2">Unit</th>
+              <th className="border p-2">Min</th>
+              <th className="border p-2">Status</th>
+              <th className="border p-2">Actions</th>
             </tr>
           </thead>
+
           <tbody>
-            {filteredMedicines.map((med, i) => (
+            {medicines.map((med, i) => (
               <tr key={med.id}>
-                <td>{i + 1}</td>
-                <td>{med.generic}</td>
-                <td>{med.brand}</td>
-                <td>{med.batch}</td>
-                <td>{med.expiry}</td>
-                <td>{med.qty}</td>
-                <td>{med.pack}</td>
-                <td>{med.total}</td>
-                <td>₹{med.mrp}</td>
-                <td>{med.unit}</td>
-                <td>{med.minStock}</td>
-                <td>{med.status}</td>
+                <td className="border p-2">{i + 1}</td>
+
+                <EditableCell med={med} field="generic" value={med.generic} />
+                <EditableCell med={med} field="brand" value={med.brand} />
+                <EditableCell med={med} field="batch" value={med.batch} />
+                <EditableCell med={med} field="expiry" value={med.expiry} />
+
+                <EditableCell
+                  med={med}
+                  field="qty"
+                  value={med.qty}
+                  type="number"
+                />
+
+                <EditableCell
+                  med={med}
+                  field="pack"
+                  value={med.pack}
+                  type="number"
+                />
+
+                <td className="border p-2 font-semibold">
+                  {med.total}
+                </td>
+
+                <EditableCell
+                  med={med}
+                  field="unit"
+                  value={med.unit}
+                  type="select"
+                  options={["Tablet", "Capsule", "Syrup", "Injection"]}
+                />
+
+                <EditableCell
+                  med={med}
+                  field="minStock"
+                  value={med.minStock}
+                  type="number"
+                />
+
+                <EditableCell
+                  med={med}
+                  field="status"
+                  value={med.status}
+                  type="select"
+                  options={["In Stock", "Low Stock", "Out of Stock"]}
+                />
+
+             <td className="border p-2 no-print">
+  <button
+    onClick={() => deleteMedicine(med.id)}
+    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+  >
+    Delete
+  </button>
+</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-
-      {/* ================= PROFILE MODAL ================= */}
-      {showProfileModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-96">
-            <h2 className="text-xl font-bold mb-4">Complete Profile</h2>
-
-            <input
-              className="w-full border p-2 mb-3"
-              placeholder="Your Name"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-            />
-
-            <input
-              className="w-full border p-2 mb-4"
-              placeholder="Clinic Name"
-              value={clinicName}
-              onChange={(e) => setClinicName(e.target.value)}
-            />
-
-            <button
-              onClick={handleSaveProfile}
-              className="w-full bg-blue-600 text-white p-2 rounded"
-            >
-              Save & Continue
-            </button>
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 };
 
