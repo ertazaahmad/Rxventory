@@ -163,8 +163,8 @@ const Inventory = () => {
       
 
         {/* TABLE */}
-        <div className="md:m-4 mt-8 print-table-wrapper scrollbar-hide border">
-        <table className="w-full border-collapse text-left mt-4">
+        <div className="md:m-4 mt-8 max-h-[70vh] print-table-wrapper overflow-x-auto overflow-y-auto  scrollbar-hide border border-rounded">
+        <table className="w-full border-collapse">
           <thead className="bg-gray-300">
             <tr>
               <th className="border p-2">Sr</th>
