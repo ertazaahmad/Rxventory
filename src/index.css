@@ -9,15 +9,16 @@
   scrollbar-width: none;
 }
 
-/* ---------------- DEFAULT ---------------- */
+/* ---------------- PRINT DEFAULT ---------------- */
 .print-only {
-  display: none;
+  visibility: hidden;
 }
 
 /* ================= PRINT ================= */
 @media print {
 
   @page {
+    size: A4;
     margin: 12mm;
   }
 
@@ -25,7 +26,7 @@
     background: white;
   }
 
-  /* Hide non-print UI */
+  /* Hide screen UI */
   nav,
   header,
   footer,
@@ -33,38 +34,41 @@
     display: none !important;
   }
 
-  .print-only {
-    display: block !important;
+  /* Hide everything */
+  body * {
+    visibility: hidden;
   }
 
-  #print-area {
+  /* Show ONLY print area */
+  #print-only-area,
+  #print-only-area * {
+    visibility: visible;
+  }
+
+  #print-only-area {
+    position: static;
     width: 100%;
-    margin: 0 auto;
   }
 
-  /* -------- HEADER -------- */
+  /* ---------- PRINT HEADER ---------- */
   .print-header {
     text-align: center;
-    margin-bottom: 10px;
+    margin-bottom: 8mm;
   }
 
-  .print-title {
+  .print-header h1 {
     font-size: 18px;
     font-weight: 800;
     letter-spacing: 2px;
+    margin: 0;
   }
 
-  .print-subtitle {
+  .print-header p {
     font-size: 11px;
+    margin: 2px 0;
   }
 
-  .print-meta {
-    text-align: right;
-    font-size: 10px;
-    margin-bottom: 6px;
-  }
-
-  /* -------- TABLE -------- */
+  /* ---------- TABLE ---------- */
   table {
     width: 100%;
     border-collapse: collapse;
@@ -72,7 +76,11 @@
   }
 
   thead {
-    display: table-header-group; /* repeat header safely */
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
   }
 
   th,
@@ -81,23 +89,6 @@
     font-size: 10px;
     padding: 6px;
     word-break: break-word;
-  }
-
-  /* 🔥 IMPORTANT FIX */
-  tr {
-    page-break-inside: auto;   /* ← allow natural breaking */
-  }
-
-  /* Remove Actions column */
-  table th:last-child,
-  table td:last-child {
-    display: none !important;
-  }
-
-  /* Prevent empty elements from creating pages */
-  .print-footer,
-  .print-watermark {
-    display: none !important;
+    text-align: left;
   }
 }
-
