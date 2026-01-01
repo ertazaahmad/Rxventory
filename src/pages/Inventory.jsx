@@ -108,7 +108,7 @@ useEffect(() => {
             },]}/>
         {/* table */}
         <div className="md:m-4 mt-8 h-[80vh] overflow-y-auto overflow-x-auto scrollbar-hide border">
-          <table className="w-full border-collapse text-left">
+          <table className="w-full h-full border-collapse text-left">
             <thead className="bg-gray-300 sticky top-0 z-10">
               <tr className="text-sm font-semibold">
                 <th className="p-3 border">Sr. No.</th>
