@@ -107,7 +107,7 @@ useEffect(() => {
               onClick: () => console.log("BILLPRINTED"),
             },]}/>
         {/* table */}
-        <div className="md:m-4 h-[60vh] overflow-y-auto overflow-x-auto scrollbar-hide border">
+        <div className="md:m-4 mt-8 h-[60vh] overflow-y-auto overflow-x-auto scrollbar-hide border">
           <table className="w-full border-collapse text-left">
             <thead className="bg-gray-300 sticky top-0 z-10">
               <tr className="text-sm font-semibold">
