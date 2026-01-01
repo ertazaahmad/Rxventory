@@ -17,7 +17,6 @@
 /* ================= PRINT ================= */
 @media print {
 
-  /* --- PAGE SETUP --- */
   @page {
     margin: 12mm;
   }
@@ -26,7 +25,7 @@
     background: white;
   }
 
-  /* --- HIDE NON-PRINT UI --- */
+  /* Hide non-print UI */
   nav,
   header,
   footer,
@@ -34,7 +33,6 @@
     display: none !important;
   }
 
-  /* --- SHOW PRINT CONTENT ONLY --- */
   .print-only {
     display: block !important;
   }
@@ -44,7 +42,7 @@
     margin: 0 auto;
   }
 
-  /* ---------- PRINT HEADER ---------- */
+  /* -------- HEADER -------- */
   .print-header {
     text-align: center;
     margin-bottom: 10px;
@@ -60,14 +58,13 @@
     font-size: 11px;
   }
 
-  /* ---------- META ---------- */
   .print-meta {
     text-align: right;
     font-size: 10px;
     margin-bottom: 6px;
   }
 
-  /* ---------- TABLE ---------- */
+  /* -------- TABLE -------- */
   table {
     width: 100%;
     border-collapse: collapse;
@@ -75,7 +72,7 @@
   }
 
   thead {
-    display: table-header-group; /* repeat header */
+    display: table-header-group; /* repeat header safely */
   }
 
   th,
@@ -86,19 +83,21 @@
     word-break: break-word;
   }
 
+  /* 🔥 IMPORTANT FIX */
   tr {
-    page-break-inside: avoid;
+    page-break-inside: auto;   /* ← allow natural breaking */
   }
 
-  /* ---------- REMOVE ACTION COLUMN ---------- */
+  /* Remove Actions column */
   table th:last-child,
   table td:last-child {
     display: none !important;
   }
 
-  /* ---------- PREVENT BLANK PAGE ---------- */
+  /* Prevent empty elements from creating pages */
   .print-footer,
   .print-watermark {
     display: none !important;
   }
 }
+
