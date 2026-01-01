@@ -224,6 +224,14 @@ const deleteMedicine = async (medicineId) => {
   };
 
   /* ================= UI ================= */
+
+
+const filteredMedicines = medicines.filter((med) =>
+  med.generic?.toLowerCase().includes(search.toLowerCase())
+);
+
+
+
   return (
 
 
@@ -328,7 +336,7 @@ const deleteMedicine = async (medicineId) => {
           </thead>
 
           <tbody>
-            {medicines.map((med, i) => (
+            {filteredMedicines.map((med, i) => (
               <tr key={med.id}>
                 <td className="border p-2">{i + 1}</td>
 
