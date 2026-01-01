@@ -22,6 +22,7 @@ const Inventory = () => {
   const [userData, setUserData] = useState(null);
   const [profileName, setProfileName] = useState("");
 const [profileClinic, setProfileClinic] = useState("");
+const [search, setSearch] = useState("");
 
 
 const handleSaveProfile = async () => {
@@ -296,6 +297,8 @@ const deleteMedicine = async (medicineId) => {
 
 
       <Actionbar
+       search={search}
+  setSearch={setSearch}
         extraAction={[
           {
             label: "+",
