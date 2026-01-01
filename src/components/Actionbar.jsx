@@ -8,7 +8,7 @@ const Actionbar = ({
   return (
     <div>
          <div className="flex justify-between">
-          <div className="flex gap-4">
+          <div className="flex md:gap-4 gap-2">
             <button className={`p-2 font-bold text-white shadow-sm focus:ring-2 ${primarycolor}`} >
               INVENTORY
             </button>
