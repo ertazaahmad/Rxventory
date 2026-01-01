@@ -139,7 +139,7 @@ const Inventory = () => {
         </div>
 
         {/* INFO SECTION */}
-        <div className="m-4 p-4 bg-gray-200 rounded-xl grid grid-cols-4 gap-4 text-sm">
+        <div className="m-4 p-4 bg-gray-200 rounded-xl grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <p>User ID: {userData.userId}</p>
           <p>Name: {userData.name}</p>
           <p>Clinic: {userData.clinicName}</p>
