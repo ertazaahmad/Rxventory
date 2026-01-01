@@ -153,6 +153,14 @@ const shouldShowProfilePopup =
   };
 
 
+  const getRowColor = (status) => {
+  if (status === "Out of Stock") return "bg-red-100";
+  if (status === "Low Stock") return "bg-yellow-100";
+  if (status === "In Stock") return "bg-green-100";
+  return "";
+};
+
+
 const deleteMedicine = async (medicineId) => {
   console.log("DELETE ID:", medicineId);
   console.log("USER ID:", user.uid);
@@ -337,7 +345,10 @@ const filteredMedicines = medicines.filter((med) =>
 
           <tbody>
             {filteredMedicines.map((med, i) => (
-              <tr key={med.id}>
+             <tr
+  key={med.id}
+  className={`${getRowColor(med.status)} hover:bg-opacity-80`}
+>
                 <td className="border p-2">{i + 1}</td>
 
                 <EditableCell med={med} field="generic" value={med.generic} />
