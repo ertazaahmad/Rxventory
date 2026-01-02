@@ -41,7 +41,7 @@ const Actionbar = ({
       </div>
 
       {/* SEARCH INPUT */}
-      <div className="relative w-64 ml-2">
+      <div className="relative w-64 text-xs md:text-lg ml-2">
         <input
           type="text"
           placeholder="Search..."
@@ -54,7 +54,7 @@ const Actionbar = ({
           src="/search.svg"
           alt="Search"
           className="absolute right-3 top-1/2 -translate-y-1/2
-          w-5 h-5 opacity-60 pointer-events-none"
+          md:w-5 md:h-5 w-3 h-3 opacity-60 pointer-events-none"
         />
       </div>
     </div>
