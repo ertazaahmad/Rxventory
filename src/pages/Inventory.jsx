@@ -153,12 +153,7 @@ const shouldShowProfilePopup =
   };
 
 
-  const getRowColor = (status) => {
-  if (status === "Out of Stock") return "bg-red-100";
-  if (status === "Low Stock") return "bg-yellow-100";
-  if (status === "In Stock") return "bg-green-100";
-  return "";
-};
+
 
 
 const deleteMedicine = async (medicineId) => {
@@ -178,58 +173,67 @@ const deleteMedicine = async (medicineId) => {
 };
 
   /* ================= EDITABLE CELL ================= */
-  const EditableCell = ({
-    med,
-    field,
-    value,
-    type = "text",
-    options = [],
-  }) => {
-    const isEditing =
-      editingCell?.id === med.id && editingCell?.field === field;
+ const EditableCell = ({
+  med,
+  field,
+  value,
+  type = "text",
+  options = [],
+}) => {
+  const isEditing =
+    editingCell?.id === med.id && editingCell?.field === field;
 
-    return (
-      <td className="border p-2">
-        {isEditing ? (
-          type === "select" ? (
-            <select
-              autoFocus
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => saveField(med, field)}
-              className="border px-1 py-1"
-            >
-              {options.map((o) => (
-                <option key={o}>{o}</option>
-              ))}
-            </select>
-          ) : (
-            <input
-              autoFocus
-              type={type}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              onBlur={() => saveField(med, field)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") saveField(med, field);
-              }}
-              className="border px-1 w-full"
-            />
-          )
-        ) : (
-          <span
-            className="cursor-pointer"
-            onClick={() => {
-              setEditingCell({ id: med.id, field });
-              setEditValue(value ?? "");
-            }}
+  let statusClass = "";
+
+  if (field === "status") {
+    if (value === "In Stock") statusClass = "status instock";
+    else if (value === "Low Stock") statusClass = "status lowstock";
+    else if (value === "Out of Stock") statusClass = "status outofstock";
+  }
+
+  return (
+    <td className={`border p-2 ${!isEditing ? statusClass : ""}`}>
+      {isEditing ? (
+        type === "select" ? (
+          <select
+            autoFocus
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => saveField(med, field)}
+            className="border px-1 py-1 w-full"
           >
-            {value || "—"}
-          </span>
-        )}
-      </td>
-    );
-  };
+            {options.map((o) => (
+              <option key={o}>{o}</option>
+            ))}
+          </select>
+        ) : (
+          <input
+            autoFocus
+            type={type}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => saveField(med, field)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") saveField(med, field);
+            }}
+            className="border px-1 w-full"
+          />
+        )
+      ) : (
+        <span
+          className="cursor-pointer font-medium"
+          onClick={() => {
+            setEditingCell({ id: med.id, field });
+            setEditValue(value ?? "");
+          }}
+        >
+          {value || "—"}
+        </span>
+      )}
+    </td>
+  );
+};
+
 
   /* ================= UI ================= */
 
@@ -296,7 +300,7 @@ const filteredMedicines = medicines.filter((med) =>
   </div>
 
   <div>
-    <span className="text-gray-600">Clinic:</span>{" "}
+    <span className="text-gray-600">Pharmacy:</span>{" "}
     <span className="font-semibold">
       {userData?.clinicName || "Rxventory"}
     </span>
@@ -304,7 +308,7 @@ const filteredMedicines = medicines.filter((med) =>
 
   <div>
     <span className="text-gray-600">Subscription:</span>{" "}
-    <span className="font-semibold text-green-700">
+    <span className="font-semibold text-red-900">
       {userData?.subscription || "Free"}
     </span>
   </div>
@@ -315,16 +319,39 @@ const filteredMedicines = medicines.filter((med) =>
       <Actionbar
        search={search}
   setSearch={setSearch}
+  
         extraAction={[
           {
             label: "+",
-            className: "bg-green-500 hover:bg-green-600 rounded px-3",
+            className: "bg-green-500 hover:bg-green-600 rounded-lg px-3",
             onClick: addEmptyMedicine,
           },
+            {
+      label: "Print",
+      className: "bg-blue-500 hover:bg-blue-600 rounded-lg px-3",
+      onClick: () => window.print(),
+    },
         ]}
       />
 
-      <div className="mt-4 overflow-x-auto">
+
+{/* ===== PRINT HEADER ===== */}
+
+
+
+
+{/* ===== MAIN TABLE ===== */}
+      <div className="mt-4 overflow-x-auto" id="print-area">
+
+{/* ===== PRINT HEADER ===== */}
+<div className="print-header">
+  <h1 className="print-title">RXVENTORY</h1>
+  <p className="print-subtitle">
+    {userData?.clinicName || "Pharmacy Name"}
+  </p>
+</div>
+
+
         <table className="w-full border-collapse">
           <thead className="bg-gray-200">
             <tr>
@@ -339,36 +366,24 @@ const filteredMedicines = medicines.filter((med) =>
               <th className="border p-2">Unit</th>
               <th className="border p-2">Min</th>
               <th className="border p-2">Status</th>
-              <th className="border p-2">Actions</th>
+              <th className="border p-2 no-print">Actions</th>
             </tr>
           </thead>
 
           <tbody>
             {filteredMedicines.map((med, i) => (
-             <tr
-  key={med.id}
-  className={`${getRowColor(med.status)} hover:bg-opacity-80`}
->
+ <tr key={med.id} className="hover:bg-gray-50">
+
+
                 <td className="border p-2">{i + 1}</td>
 
                 <EditableCell med={med} field="generic" value={med.generic} />
                 <EditableCell med={med} field="brand" value={med.brand} />
                 <EditableCell med={med} field="batch" value={med.batch} />
                 <EditableCell med={med} field="expiry" value={med.expiry} />
+                <EditableCell med={med} field="qty" value={med.qty} type="number"/>
+                <EditableCell med={med} field="pack" value={med.pack} type="number"/>
 
-                <EditableCell
-                  med={med}
-                  field="qty"
-                  value={med.qty}
-                  type="number"
-                />
-
-                <EditableCell
-                  med={med}
-                  field="pack"
-                  value={med.pack}
-                  type="number"
-                />
 
                 <td className="border p-2 font-semibold">
                   {med.total}
@@ -400,7 +415,7 @@ const filteredMedicines = medicines.filter((med) =>
              <td className="border p-2 no-print">
   <button
     onClick={() => deleteMedicine(med.id)}
-    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded"
+    className="bg-red-500 hover:bg-red-700 text-white px-2 py-1 rounded"
   >
     Delete
   </button>

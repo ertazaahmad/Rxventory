@@ -9,86 +9,110 @@
   scrollbar-width: none;
 }
 
-/* ---------------- PRINT DEFAULT ---------------- */
-.print-only {
-  visibility: hidden;
+
+.status {
+  text-align: center;
+  font-weight: 600;
 }
 
-/* ================= PRINT ================= */
+/* screen */
+.instock {
+  background-color: #dcfce7;
+}
+.lowstock {
+  background-color: #fef9c3;
+}
+.outofstock {
+  background-color: #fee2e2;
+}
+
+/* print header default hidden */
+.print-header {
+  display: none;
+}
+
+
+
+
+/* ---------------- PRINT DEFAULT ---------------- */
 @media print {
 
-  @page {
-    size: A4;
-    margin: 12mm;
-  }
 
-  body {
-    background: white;
-  }
 
-  /* Hide screen UI */
-  nav,
-  header,
-  footer,
-  .no-print {
-    display: none !important;
-  }
-
-  /* Hide everything */
   body * {
     visibility: hidden;
   }
 
-  /* Show ONLY print area */
-  #print-only-area,
-  #print-only-area * {
+  #print-area,
+  #print-area * {
     visibility: visible;
   }
 
-  #print-only-area {
-    position: static;
+  #print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
     width: 100%;
   }
 
-  /* ---------- PRINT HEADER ---------- */
-  .print-header {
-    text-align: center;
-    margin-bottom: 8mm;
+ .no-print {
+    display: none !important;
   }
 
-  .print-header h1 {
-    font-size: 18px;
-    font-weight: 800;
-    letter-spacing: 2px;
-    margin: 0;
+
+ body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
-  .print-header p {
-    font-size: 11px;
-    margin: 2px 0;
-  }
-
-  /* ---------- TABLE ---------- */
   table {
-    width: 100%;
     border-collapse: collapse;
-    table-layout: fixed;
+    width: 100%;
   }
 
-  thead {
-    display: table-header-group;
+  th, td {
+    border: 1px solid black;
   }
 
-  tr {
-    page-break-inside: avoid;
+ .status.instock {
+    background-color: #dcfce7 !important;
   }
 
-  th,
-  td {
-    border: 1px solid #000;
-    font-size: 10px;
-    padding: 6px;
-    word-break: break-word;
-    text-align: left;
+  .status.lowstock {
+    background-color: #fef9c3 !important;
   }
+
+  .status.outofstock {
+    background-color: #fee2e2 !important;
+  }
+
+
+
+
+
+
+
+    .print-header {
+    display: block;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  .print-title {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: 2px;
+  }
+
+  .print-subtitle {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 4px;
+    letter-spacing: 2;
+  }
+
+
+
+
+
 }
