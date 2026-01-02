@@ -9,7 +9,6 @@
   scrollbar-width: none;
 }
 
-
 .status {
   text-align: center;
   font-weight: 600;
@@ -31,14 +30,8 @@
   display: none;
 }
 
-
-
-
 /* ---------------- PRINT DEFAULT ---------------- */
 @media print {
-
-
-
   body * {
     visibility: hidden;
   }
@@ -55,12 +48,11 @@
     width: 100%;
   }
 
- .no-print {
+  .no-print {
     display: none !important;
   }
 
-
- body {
+  body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
@@ -70,11 +62,12 @@
     width: 100%;
   }
 
-  th, td {
+  th,
+  td {
     border: 1px solid black;
   }
 
- .status.instock {
+  .status.instock {
     background-color: #dcfce7 !important;
   }
 
@@ -86,13 +79,7 @@
     background-color: #fee2e2 !important;
   }
 
-
-
-
-
-
-
-    .print-header {
+  .print-header {
     display: block;
     text-align: center;
     margin-bottom: 12px;
@@ -110,9 +97,4 @@
     margin-top: 4px;
     letter-spacing: 2;
   }
-
-
-
-
-
 }
