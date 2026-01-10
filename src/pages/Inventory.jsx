@@ -319,8 +319,8 @@ const Inventory = () => {
               <th className="border p-2">Brand</th>
               <th className="border p-2">Batch</th>
               <th className="border p-2">Expiry</th>
-              <th className="border p-2">Qty</th>
-              <th className="border p-2">Pack</th>
+              <th className="border p-2 ">Qty (Strips)</th>
+              <th className="border p-2">Pack </th>
               <th className="border p-2">Total</th>
               <th className="border p-2">Unit</th>
               <th className="border p-2">Min</th>

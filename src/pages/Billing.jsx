@@ -5,7 +5,7 @@ const Billing = () => {
 
   return (
     <div>
-      <div className=" min-h-[calc(100vh-6rem)] m-4 p-4 pb-1 bg-gray-200 rounded-xl  text-sm font-medium">
+      <div className=" min-h-[calc(100vh-6rem)] m-2 p-4 pb-1 bg-gray-200 rounded-xl  text-sm font-medium">
         <Actionbar
           primarycolor="focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500"
           secondarycolor="focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500"
@@ -22,16 +22,10 @@ const Billing = () => {
                 "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
               onClick: () => console.log("NEW BILL MADE"),
             },
-             {
-              label: "EDIT BILL",
-              className:
-                "focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500",
-              onClick: () => console.log("NEW BILL MADE"),
-            },
           ]}
         />
         {/* bill */}
-        <main className="border m-2 mb-1 h-[calc(100vh-11rem)] ">
+        <main id="print-area" className="border m-2 mb-1 h-[calc(100vh-11rem)] ">
           <div className=" pl-4 border-b border-black h-24 grid grid-cols-3 gap-80">
             <div className="flex flex-col gap-1">
               <h3 className="text-blue-600 font-extrabold">Yashfeen Medical</h3>
