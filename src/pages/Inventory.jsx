@@ -23,7 +23,10 @@ const Inventory = () => {
   const [profileName, setProfileName] = useState("");
   const [profileClinic, setProfileClinic] = useState("");
   const [search, setSearch] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState([]);
 
+  /* ================= PROFILE POPUP ================= */
   const handleSaveProfile = async () => {
     if (!user) return;
     if (!profileName.trim() || !profileClinic.trim()) {
@@ -216,9 +219,55 @@ const Inventory = () => {
 
   /* ================= UI ================= */
 
-  const filteredMedicines = medicines.filter((med) =>
-    med.generic?.toLowerCase().includes(search.toLowerCase())
-  );
+
+const getExpiryType = (expiry) => {
+  if (!expiry) return "valid";
+
+  const today = new Date();
+  const [year, month] = expiry.split("-");
+  const expiryDate = new Date(year, month - 1, 1);
+
+  const diffDays =
+    (expiryDate - today) / (1000 * 60 * 60 * 24);
+
+  if (diffDays < 0) return "expired";
+  if (diffDays <= 30) return "nearExpiry"; // you can change 30
+  return "valid";
+};
+
+
+
+
+const filteredMedicines = medicines.filter((med) => {
+  // SEARCH
+  const matchesSearch =
+    !search ||
+    med.generic?.toLowerCase().includes(search.toLowerCase());
+
+  // EXPIRY TYPE
+  const expiryType = getExpiryType(med.expiry);
+
+  const expirySelected =
+    selectedStatus.includes("Expired") ||
+    selectedStatus.includes("Near Expiry");
+
+  const matchesExpiry =
+    !expirySelected ||
+    (selectedStatus.includes("Expired") && expiryType === "expired") ||
+    (selectedStatus.includes("Near Expiry") && expiryType === "nearExpiry");
+
+  // STOCK STATUS (IGNORE when expiry filter is active)
+  const matchesStatus =
+    expirySelected ||
+    selectedStatus.length === 0 ||
+    selectedStatus.includes(med.status);
+
+  return matchesSearch && matchesStatus && matchesExpiry;
+});
+
+
+
+
 
   return (
     <div className="p-4">
@@ -299,8 +348,6 @@ const Inventory = () => {
         ]}
       />
 
-      {/* ===== PRINT HEADER ===== */}
-
       {/* ===== MAIN TABLE ===== */}
       <div className="mt-4 overflow-x-auto" id="print-area">
         {/* ===== PRINT HEADER ===== */}
@@ -324,7 +371,93 @@ const Inventory = () => {
               <th className="border p-2">Total</th>
               <th className="border p-2">Unit</th>
               <th className="border p-2">Min</th>
-              <th className="border p-2">Status</th>
+              <th className="border p-2">
+                <div className="relative inline-flex items-center gap-2">
+                  <span>Status</span>
+
+                  <button
+                    onClick={() => {
+                      setIsOpen(!isOpen);
+                    }}
+                    className=" flex items-center gap-1 focus:outline-none"
+                  >
+                    <svg
+                      className={`h-6 w-6 mt-1 transition-transform duration-300 ${
+                        !isOpen ? "rotate-180" : "rotate-0"
+                      }`}
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                    >
+                      <path d="M11.9999 13.1714L16.9497 8.22168L18.3639 9.63589L11.9999 15.9999L5.63599 9.63589L7.0502 8.22168L11.9999 13.1714Z"></path>
+                    </svg>
+                  </button>
+
+                  {!isOpen && (
+                    <div className="dropdown fixed w-33  mt-40  bg-white border p-2 rounded shadow-lg  z-10 flex flex-col space-y-1 items-start">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={selectedStatus.includes("Out of Stock")}
+                          onChange={() => {
+                            setSelectedStatus((prev) =>
+                              prev.includes("Out of Stock")
+                                ? prev.filter((s) => s !== "Out of Stock")
+                                : [...prev, "Out of Stock"]
+                            );
+                          }}
+                        />
+                        Out of Stock
+                      </label>
+
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={selectedStatus.includes("Low Stock")}
+                          onChange={() => {
+                            setSelectedStatus((prev) =>
+                              prev.includes("Low Stock")
+                                ? prev.filter((s) => s !== "Low Stock")
+                                : [...prev, "Low Stock"]
+                            );
+                          }}
+                        />
+                        Low Stock
+                      </label>
+
+                      <label>
+                         <input
+                          type="checkbox"
+                          checked={selectedStatus.includes("Near Expiry")}
+                          onChange={() => {
+                            setSelectedStatus((prev) =>
+                              prev.includes("Near Expiry")
+                                ? prev.filter((s) => s !== "Near Expiry")
+                                : [...prev, "Near Expiry"]
+                            );
+                          }}
+                        />
+                        Near Expiry
+                      </label>
+
+                      <label>
+                         <input
+                          type="checkbox"
+                          checked={selectedStatus.includes("Expired")}
+                          onChange={() => {
+                            setSelectedStatus((prev) =>
+                              prev.includes("Expired")
+                                ? prev.filter((s) => s !== "Expired")
+                                : [...prev, "Expired"]
+                            );
+                          }}
+                        />
+                        Expired
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </th>
               <th className="border p-2 no-print">Actions</th>
             </tr>
           </thead>
@@ -337,7 +470,12 @@ const Inventory = () => {
                 <EditableCell med={med} field="generic" value={med.generic} />
                 <EditableCell med={med} field="brand" value={med.brand} />
                 <EditableCell med={med} field="batch" value={med.batch} />
-                <EditableCell med={med} field="expiry" value={med.expiry} />
+                <EditableCell
+                  med={med}
+                  field="expiry"
+                  value={med.expiry}
+                  type="month"
+                />
                 <EditableCell
                   med={med}
                   field="qty"
