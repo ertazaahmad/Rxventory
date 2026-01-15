@@ -15,7 +15,6 @@ import Actionbar from "../components/Actionbar";
 
 const Inventory = () => {
   const { user } = useAuth();
-
   const [medicines, setMedicines] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -88,6 +87,8 @@ const Inventory = () => {
   useEffect(() => {
     fetchMedicines();
   }, [user]);
+
+
 
   /* ================= ADD EMPTY MEDICINE ================= */
   const addEmptyMedicine = async () => {
