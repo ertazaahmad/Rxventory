@@ -1,5 +1,34 @@
 @import "tailwindcss";
 
+
+
+
+
+table{
+  table-layout: fixed;
+  width: 100%;
+}
+
+td{
+  overflow: hidden;
+
+}
+
+td input,
+td select{
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+
+
+
+
+
+
+
+
 /* ---------------- SCROLLBAR ---------------- */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;

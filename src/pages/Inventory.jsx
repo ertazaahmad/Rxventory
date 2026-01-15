@@ -361,12 +361,12 @@ const filteredMedicines = medicines.filter((med) => {
         <table className="w-full border-collapse">
           <thead className="bg-gray-200">
             <tr>
-              <th className="border p-2">Sr</th>
-              <th className="border p-2">Generic</th>
+              <th className="border p-2" style={{width: "50px"}}>Sr</th>
+              <th className="border p-2" style={{width: "200px"}}>Generic</th>
               <th className="border p-2">Brand</th>
               <th className="border p-2">Batch</th>
               <th className="border p-2">Expiry</th>
-              <th className="border p-2 ">Qty (Strips)</th>
+              <th className="border p-2">Qty (Strips)</th>
               <th className="border p-2">Pack </th>
               <th className="border p-2">Total</th>
               <th className="border p-2">Unit</th>
@@ -383,7 +383,7 @@ const filteredMedicines = medicines.filter((med) => {
                   >
                     <svg
                       className={`h-6 w-6 mt-1 transition-transform duration-300 ${
-                        !isOpen ? "rotate-180" : "rotate-0"
+                        !isOpen ? "rotate-0" : "rotate-180"
                       }`}
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 24 24"
@@ -393,7 +393,7 @@ const filteredMedicines = medicines.filter((med) => {
                     </svg>
                   </button>
 
-                  {!isOpen && (
+                  {isOpen && (
                     <div className="dropdown fixed w-33  mt-40  bg-white border p-2 rounded shadow-lg  z-10 flex flex-col space-y-1 items-start">
                       <label>
                         <input
