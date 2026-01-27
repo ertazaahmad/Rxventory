@@ -122,37 +122,6 @@ const Billing = () => {
     });
   };
 
-  // Function to cancel/discard a bill and restore inventory
-  const handleCancelBill = async () => {
-    if (window.confirm("Are you sure you want to cancel this bill? All items will be restored to inventory.")) {
-      await restoreInventoryQuantities();
-      await handleNewBill();
-    }
-  };
-
-  // Function to restore inventory quantities when bill is cleared
-  const restoreInventoryQuantities = async () => {
-    if (!user) return;
-
-    for (const item of billItems) {
-      if (item.medicineId && item.qty > 0) {
-        const medRef = doc(db, "users", user.uid, "medicines", item.medicineId);
-        const medSnap = await getDoc(medRef);
-        
-        if (medSnap.exists()) {
-          const currentQty = medSnap.data().qty || 0;
-          const newQty = currentQty + Number(item.qty);
-          
-          await updateDoc(medRef, {
-            qty: newQty,
-          });
-        }
-      }
-    }
-    
-    // Refresh inventory
-    fetchInventory();
-  };
 
   const handleSavePharmacy = async () => {
     if (!user) return;
@@ -582,12 +551,6 @@ const Billing = () => {
               className:
                 "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
               onClick: () => handleNewBill(),
-            },
-            {
-              label: "CANCEL BILL",
-              className:
-                "focus:ring-red-900/60 rounded-xl bg-red-400 hover:bg-red-500",
-              onClick: () => handleCancelBill(),
             },
           ]}
           showSearch={false}

@@ -4,6 +4,7 @@ import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Inventory from "./pages/Inventory.jsx";
 import Billing from "./pages/Billing.jsx";
+import Subscription from "./pages/Subscription.jsx";
 
 import Nav from "./components/nav.jsx";
 import Footer from "./components/Footer.jsx";
@@ -22,6 +23,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/billing" element={<Billing />} />
+            <Route path="/subscription" element={<Subscription />} />
           </Routes>
         </main>
 
