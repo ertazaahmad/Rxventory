@@ -497,7 +497,7 @@ const filteredMedicines = medicines.filter((med) => {
                   field="unit"
                   value={med.unit}
                   type="select"
-                  options={["Tablet", "Capsule", "Syrup", "Injection"]}
+                  options={["Tablet", "Capsule", "Syrup", "Injection", "Ointment"]}
                 />
 
                 <EditableCell

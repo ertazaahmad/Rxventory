@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { getDoc, setDoc, updateDoc, doc } from "firebase/firestore";
+import {
+  getDoc,
+  setDoc,
+  updateDoc,
+  doc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "../firebase";
 import Actionbar from "../components/Actionbar.jsx";
 
@@ -14,12 +21,53 @@ const Billing = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [loadingUserData, setLoadingUserData] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [gstPercent, setGstPercent] = useState(12);
+
+  const emptyRow = {
+    genericName: "",
+    brand: "",
+    batch: "",
+    expiry: "",
+    qty: "",
+    packSize: "",
+    mrp: "",
+    rate: "",
+    amount: 0,
+    status: "",
+  };
+
+  const [billItems, setBillItems] = useState([emptyRow]);
+
+  const createEmptyRow = () => ({
+    genericName: "",
+    brand: "",
+    batch: "",
+    expiry: "",
+    qty: "",
+    packSize: "",
+    mrp: "",
+    rate: "",
+    gstPercent: 12,
+    amount: 0,
+    status: "",
+  });
+
+  const [inventory, setInventory] = useState([]);
 
   const [patient, setPatient] = useState({
     name: "",
     doctor: "",
     address: "",
   });
+
+  const formatExpiry = (value) => {
+    if (!value) return "";
+    const date = new Date(`${value}-01`);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   const [invoiceMeta, setInvoiceMeta] = useState({
     invoiceNo: "",
@@ -53,6 +101,9 @@ const Billing = () => {
       address: "",
       doctor: "",
     });
+
+    // Reset to single empty row
+    setBillItems([createEmptyRow()]);
 
     const invoiceNo = await generateInvoiceNumber();
     const now = new Date();
@@ -150,6 +201,12 @@ const Billing = () => {
     setShowPopup(!isComplete);
   }, [userData, loadingUserData]);
 
+  const addRowAt = (index) => {
+    const updated = [...billItems];
+    updated.splice(index, 0, createEmptyRow());
+    setBillItems(updated);
+  };
+
   // RESTORE DRAFT ON MOUNT (runs only once)
   useEffect(() => {
     const savedDraft = localStorage.getItem("billingDraft");
@@ -157,8 +214,12 @@ const Billing = () => {
     if (savedDraft) {
       try {
         const data = JSON.parse(savedDraft);
+
         if (data.patient) setPatient(data.patient);
         if (data.invoiceMeta) setInvoiceMeta(data.invoiceMeta);
+        if (data.billItems && data.billItems.length) {
+          setBillItems(data.billItems);
+        }
       } catch (error) {
         console.error("Error restoring draft:", error);
       }
@@ -172,7 +233,7 @@ const Billing = () => {
     if (!isInitialized || loadingUserData || showPopup) return;
 
     const savedDraft = localStorage.getItem("billingDraft");
-    
+
     // Only generate new invoice if there's no draft AND no current invoice
     if (!savedDraft && !invoiceMeta.invoiceNo) {
       handleNewBill();
@@ -186,10 +247,52 @@ const Billing = () => {
     const draftBill = {
       patient,
       invoiceMeta,
+      billItems,
     };
 
     localStorage.setItem("billingDraft", JSON.stringify(draftBill));
-  }, [patient, invoiceMeta, isInitialized]);
+  }, [patient, invoiceMeta, billItems, isInitialized]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchInventory = async () => {
+      const ref = collection(db, "users", user.uid, "medicines");
+      const snap = await getDocs(ref);
+
+      const list = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data(),
+      }));
+
+      setInventory(list);
+    };
+
+    fetchInventory();
+  }, [user]);
+
+  // Calculate totals
+  const calculateTotals = () => {
+    const subtotal = billItems.reduce((sum, item) => {
+      const qty = Number(item.qty) || 0;
+      const mrp = Number(item.mrp) || 0;
+      return sum + (qty * mrp);
+    }, 0);
+
+    const totalGST = billItems.reduce((sum, item) => {
+      return sum + (Number(item.gstAmount) || 0);
+    }, 0);
+
+    const grandTotal = subtotal + totalGST;
+
+    return {
+      subtotal: subtotal.toFixed(2),
+      totalGST: totalGST.toFixed(2),
+      grandTotal: grandTotal.toFixed(2),
+    };
+  };
+
+  const totals = calculateTotals();
 
   return (
     <div>
@@ -261,10 +364,7 @@ const Billing = () => {
             },
           ]}
         />
-        <main
-          id="print-area"
-          className="border m-2 mb-1 h-[calc(100vh-11rem)]"
-        >
+        <main id="print-area" className="border m-2 mb-1 h-[calc(100vh-11rem)]">
           <div className="pl-4 border-b border-black h-24 grid grid-cols-3 gap-80">
             <div className="flex flex-col gap-1">
               <h3 className="text-blue-600 font-extrabold">
@@ -326,16 +426,35 @@ const Billing = () => {
             <table className="w-full text-left divide-y divide-gray-400">
               <thead className="bg-gray-300 sticky top-0 z-10">
                 <tr className="text-sm font-semibold">
-                  <th className="px-4 py-2" style={{width: 50}}>Sr.</th>
-                  <th className="px-4 py-2" style={{width: 180}}>Generic Name</th>
+                  <th className="px-4 py-2" style={{ width: 50 }}>
+                    Sr.
+                  </th>
+                  <th className="px-4 py-2" style={{ width: 180 }}>
+                    Generic Name
+                  </th>
                   <th className="px-4 py-2">Brand</th>
                   <th className="px-4 py-2">Batch No.</th>
                   <th className="px-4 py-2">Expiry</th>
                   <th className="px-4 py-2">Qty </th>
                   <th className="px-4 py-2">Pack Size</th>
-                  <th className="px-4 py-2">MRP</th>
                   <th className="px-4 py-2">Rate</th>
-                  <th className="px-4 py-2">GST</th>
+                  <th className="px-4 py-2">MRP</th>
+                  <th className="px-4 py-2">
+                    <div className="flex flex-col gap-1 items-center">
+                      <span>GST %</span>
+                      <input
+                        type="number"
+                        value={gstPercent}
+                        onChange={(e) =>
+                          setGstPercent(Number(e.target.value) || 0)
+                        }
+                        className="w-12 px-1 py-1 border border-gray-400 rounded text-center bg-white text-sm"
+                        min="0"
+                        max="99"
+                      />
+                    </div>
+                  </th>
+
                   <th className="px-4 py-2">Amount</th>
                   <th className="px-4 py-2">Status</th>
                   <th className="px-4 py-2">Actions</th>
@@ -343,41 +462,212 @@ const Billing = () => {
               </thead>
 
               <tbody>
-                {[...Array(10)].map((_, index) => (
+                {billItems.map((item, index) => (
                   <tr key={index} className="bg-white hover:bg-gray-100">
-                    <td className="p-1 border text-center">1</td>
-                    <td className="p-1 border">Paracetamol</td>
-                    <td className="p-1 border">Crocin</td>
-                    <td className="p-1 border">B123</td>
-                    <td className="p-1 border">12/26</td>
-                    <td className="p-1 border">50</td>
-                    <td className="p-1 border">10 tabs</td>
-                    <td className="p-1 border">500</td>
-                    <td className="p-1 border">₹25</td>
-                    <td className="p-1 border">Tablet</td>
-                    <td className="p-1 border">20</td>
-                    <td className="p-1 border text-green-600 font-semibold">
-                      In Stock
-                    </td>
+                    {/* Sr. No */}
+                    <td className="p-1 border text-center">{index + 1}</td>
+
+                    {/* Generic Name */}
                     <td className="p-1 border">
-                      <div className="flex gap-2 justify-center">
-                        <button className="px-1 py-1 bg-red-400 text-white rounded flex">
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            className="w-4 h-4 text-white"
-                            fill="none"
-                            stroke="black"
-                            strokeWidth="2"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7h6m2 0H7m3-3h4a1 1 0 011 1v1H9V5a1 1 0 011-1z"
-                            />
-                          </svg>
-                        </button>
+                      <input
+                        value={item.genericName}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const updated = [...billItems];
+                          updated[index].genericName = value;
+
+                          const match = inventory.find(
+                            (m) =>
+                              m.generic?.toLowerCase() === value.toLowerCase(),
+                          );
+
+                          if (match) {
+                            updated[index] = {
+                              ...updated[index],
+                              medicineId: match.id,
+                              genericName: match.generic,
+                              brand: match.brand,
+                              batch: match.batch,
+                              expiry: match.expiry,
+                              packSize: match.pack,
+                              mrp: match.total,
+                              rate: match.total / match.pack,
+                              gstPercent: 12,
+                              originalStock: match.qty,
+                              qty: 0,
+                            };
+                          }
+
+                          setBillItems(updated);
+                        }}
+                        className="w-full"
+                      />
+                    </td>
+
+                    {/* Brand */}
+                    <td className="p-1 border">
+                      <input
+                        value={item.brand}
+                        onChange={(e) => {
+                          const updated = [...billItems];
+                          updated[index].brand = e.target.value;
+                          setBillItems(updated);
+                        }}
+                        className="w-full"
+                      />
+                    </td>
+                    {/* Batch No. */}
+                    <td className="p-1 border">
+                      <input
+                        value={item.batch}
+                        onChange={(e) => {
+                          const updated = [...billItems];
+                          updated[index].batch = e.target.value;
+                          setBillItems(updated);
+                        }}
+                        className="w-full"
+                      />
+                    </td>
+
+                    {/* Expiry */}
+                    <td className="p-1 border text-center">
+                      {item.expiry || "—"}
+                    </td>
+
+                    {/* Qty */}
+                    <td className="p-1 border ">
+                      <input
+                        type="number"
+                        value={item.qty}
+                        onChange={(e) => {
+                          const qty = Number(e.target.value) || 0;
+                          const updated = [...billItems];
+                          const currentItem = updated[index];
+
+                          if (qty > currentItem.originalStock) {
+                            alert("Insufficient stock");
+                            return;
+                          }
+
+                          currentItem.qty = qty;
+
+                          // Calculate based on MRP (not rate)
+                          const baseAmount = qty * Number(currentItem.mrp || 0);
+                          const gstAmount = (baseAmount * gstPercent) / 100;
+
+                          currentItem.gstAmount = gstAmount;
+                          currentItem.amount = baseAmount + gstAmount;
+
+                          setBillItems(updated);
+                        }}
+                        className="w-full text-right"
+                      />
+                    </td>
+
+                    {/* Pack Size */}
+                    <td className="p-1 border">
+                      <input
+                        type="number"
+                        value={item.packSize}
+                        onChange={(e) => {
+                          const packSize = Number(e.target.value) || 0;
+                          const updated = [...billItems];
+                          updated[index].packSize = packSize;
+                          setBillItems(updated);
+                        }}
+                        className="w-full text-right"
+                      />
+                    </td>
+
+                    {/* Rate (for display only) */}
+                    <td className="py-1 px-4 border">
+                      <div className="relative flex items-center">
+                        <span className="absolute left-2">₹</span>
+                        <input
+                          type="number"
+                          value={item.rate}
+                          onChange={(e) => {
+                            const rate = Number(e.target.value) || 0;
+                            const updated = [...billItems];
+                            updated[index].rate = rate;
+                            setBillItems(updated);
+                          }}
+                          className="w-full text-right pr-1"
+                          style={{ paddingLeft: '20px' }}
+                        />
                       </div>
+                    </td>
+
+                    {/* MRP (used for calculations) */}
+                    <td className="py-1 px-4 border">
+                      <div className="relative flex items-center">
+                        <span className="absolute left-2">₹</span>
+                        <input
+                          type="number"
+                          value={item.mrp}
+                          onChange={(e) => {
+                            const mrp = Number(e.target.value) || 0;
+                            const updated = [...billItems];
+                            const currentItem = updated[index];
+                            
+                            currentItem.mrp = mrp;
+
+                            // Recalculate amount based on new MRP
+                            const qty = Number(currentItem.qty) || 0;
+                            const baseAmount = qty * mrp;
+                            const gstAmount = (baseAmount * gstPercent) / 100;
+
+                            currentItem.gstAmount = gstAmount;
+                            currentItem.amount = baseAmount + gstAmount;
+
+                            setBillItems(updated);
+                          }}
+                          className="w-full text-right pr-1"
+                          style={{ paddingLeft: '20px' }}
+                        />
+                      </div>
+                    </td>
+
+                    {/* GST Amount */}
+                    <td className="p-1 border text-right">
+                      ₹ {item.gstAmount?.toFixed(2) || "0.00"}
+                    </td>
+
+                    {/* Amount (read-only) */}
+                    <td className="p-1 border text-right">₹ {item.amount?.toFixed(2) || "0.00"}</td>
+
+                    {/* Status */}
+                    <td className="p-1 border">
+                      <input
+                        value={item.status}
+                        onChange={(e) => {
+                          const updated = [...billItems];
+                          updated[index].status = e.target.value;
+                          setBillItems(updated);
+                        }}
+                        className="w-full"
+                      />
+                    </td>
+
+                    {/* Actions */}
+                    <td className="p-1 border text-center justify-around flex">
+                      <button
+                        onClick={() => {
+                          const updated = billItems.filter(
+                            (_, i) => i !== index,
+                          );
+                          setBillItems(updated.length ? updated : [emptyRow]);
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        onClick={() => addRowAt(index + 1)}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        Add
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -403,13 +693,13 @@ const Billing = () => {
               <div className="total p-1 text-xs flex justify-between">
                 <div>
                   <p>Subtotal:</p>
-                  <p>Total GST(12%):</p>
+                  <p>Total GST({gstPercent}%):</p>
                   <p className="font-bold">GRAND TOTAL:</p>
                 </div>
                 <div>
-                  <p>₹1500</p>
-                  <p>₹180</p>
-                  <p className="font-bold">₹1680</p>
+                  <p>₹{totals.subtotal}</p>
+                  <p>₹{totals.totalGST}</p>
+                  <p className="font-bold">₹{totals.grandTotal}</p>
                 </div>
               </div>
             </div>
