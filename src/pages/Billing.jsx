@@ -296,6 +296,126 @@ const Billing = () => {
 
   return (
     <div>
+      <style>{`
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 15mm 10mm;
+          }
+          
+          body {
+            print-color-adjust: exact;
+            -webkit-print-color-adjust: exact;
+          }
+          
+          /* Hide elements that shouldn't print */
+          .no-print {
+            display: none !important;
+          }
+          
+          /* Hide Status and Actions columns */
+          .print-hide {
+            display: none !important;
+          }
+          
+          /* Ensure the print area takes full width */
+          #print-area {
+            height: auto !important;
+            overflow: visible !important;
+            border: 1px solid black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 100vh !important;
+          }
+          
+          /* Fix table layout for printing */
+          table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 9px !important;
+          }
+          
+          /* Add borders to table cells */
+          th, td {
+            border: 1px solid #000 !important;
+            padding: 3px 4px !important;
+          }
+          
+          thead {
+            background-color: #d1d5db !important;
+          }
+          
+          /* Make inputs look like regular text when printing */
+          input {
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            font-size: 9px !important;
+          }
+          
+          /* Remove hover effects */
+          tr:hover {
+            background: white !important;
+          }
+          
+          /* Fix the container margins/padding */
+          .min-h-\\[calc\\(100vh-6rem\\)\\] {
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+          
+          /* Remove scrollbars */
+          .overflow-y-auto, .overflow-x-auto {
+            overflow: visible !important;
+            height: auto !important;
+          }
+          
+          /* Make the table section grow to push footer down */
+          .table-container {
+            flex-grow: 1 !important;
+            min-height: 400px !important;
+          }
+          
+          /* Keep footer at bottom */
+          .footer-section {
+            margin-top: auto !important;
+            page-break-inside: avoid !important;
+          }
+          
+          /* Header section with borders */
+          .header-section {
+            border-bottom: 2px solid black !important;
+            padding: 8px 16px !important;
+            height: auto !important;
+            display: grid !important;
+            grid-template-columns: 1fr 1fr 1fr !important;
+            gap: 60px !important;
+          }
+          
+          .header-section input {
+            border: none !important;
+            outline: none !important;
+            background: transparent !important;
+            display: inline !important;
+            width: auto !important;
+            max-width: 150px !important;
+            font-size: 9px !important;
+          }
+          
+          .header-section input::placeholder {
+            color: transparent !important;
+          }
+          
+          .header-section p {
+            font-size: 9px !important;
+            margin: 2px 0 !important;
+          }
+        }
+      `}</style>
       {!loadingUserData && showPopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl w-96">
@@ -363,9 +483,10 @@ const Billing = () => {
               onClick: () => handleNewBill(),
             },
           ]}
+          showSearch={false}
         />
         <main id="print-area" className="border m-2 mb-1 h-[calc(100vh-11rem)]">
-          <div className="pl-4 border-b border-black h-24 grid grid-cols-3 gap-80">
+          <div className="pl-4  border-b border-black h-24 grid grid-cols-3 gap-16 header-section">
             <div className="flex flex-col gap-1">
               <h3 className="text-blue-600 font-extrabold">
                 {userData?.pharmacyName || "—"}
@@ -422,42 +543,43 @@ const Billing = () => {
             </div>
           </div>
 
-          <div className="m-2 h-[48vh] overflow-y-auto overflow-x-auto scrollbar-hide">
+          <div className="m-2 h-[48vh] overflow-y-auto overflow-x-auto scrollbar-hide table-container">
             <table className="w-full text-left divide-y divide-gray-400">
               <thead className="bg-gray-300 sticky top-0 z-10">
                 <tr className="text-sm font-semibold">
-                  <th className="px-4 py-2" style={{ width: 50 }}>
+                  <th className="px-2 py-1" style={{ width: 50 }}>
                     Sr.
                   </th>
-                  <th className="px-4 py-2" style={{ width: 180 }}>
+                  <th className="px-2 py-1" style={{ width: 180 }}>
                     Generic Name
                   </th>
-                  <th className="px-4 py-2">Brand</th>
-                  <th className="px-4 py-2">Batch No.</th>
-                  <th className="px-4 py-2">Expiry</th>
-                  <th className="px-4 py-2">Qty </th>
-                  <th className="px-4 py-2">Pack Size</th>
-                  <th className="px-4 py-2">Rate</th>
-                  <th className="px-4 py-2">MRP</th>
-                  <th className="px-4 py-2">
-                    <div className="flex flex-col gap-1 items-center">
-                      <span>GST %</span>
+                  <th className="px-2 py-1">Brand</th>
+                  <th className="px-2 py-1">Batch No.</th>
+                  <th className="px-2 py-1">Expiry</th>
+                  <th className="px-2 py-1">Qty </th>
+                  <th className="px-2 py-1">Pack Size</th>
+                  <th className="px-2 py-1">Rate</th>
+                  <th className="px-2 py-1">MRP</th>
+                  <th className="px-2 py-1">
+                    <div className="flex items-center gap-1 justify-center">
+                      <span className="text-xs no-print">GST %</span>
+                      <span className="hidden print:inline text-xs">GST {gstPercent}%</span>
                       <input
                         type="number"
                         value={gstPercent}
                         onChange={(e) =>
                           setGstPercent(Number(e.target.value) || 0)
                         }
-                        className="w-12 px-1 py-1 border border-gray-400 rounded text-center bg-white text-sm"
+                        className="w-10 px-1 py-0.5 border border-gray-400 rounded text-center bg-white text-xs no-print"
                         min="0"
                         max="99"
                       />
                     </div>
                   </th>
 
-                  <th className="px-4 py-2">Amount</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Actions</th>
+                  <th className="px-2 py-1">Amount</th>
+                  <th className="px-2 py-1 print-hide">Status</th>
+                  <th className="px-2 py-1 print-hide">Actions</th>
                 </tr>
               </thead>
 
@@ -637,7 +759,7 @@ const Billing = () => {
                     <td className="p-1 border text-right">₹ {item.amount?.toFixed(2) || "0.00"}</td>
 
                     {/* Status */}
-                    <td className="p-1 border">
+                    <td className="p-1 border print-hide">
                       <input
                         value={item.status}
                         onChange={(e) => {
@@ -650,7 +772,7 @@ const Billing = () => {
                     </td>
 
                     {/* Actions */}
-                    <td className="p-1 border text-center justify-around flex">
+                    <td className="p-1 border text-center justify-around flex print-hide">
                       <button
                         onClick={() => {
                           const updated = billItems.filter(
@@ -675,7 +797,7 @@ const Billing = () => {
             </table>
           </div>
 
-          <div className="p-2 flex justify-between">
+          <div className="p-2 flex justify-between footer-section">
             <div className="left">
               <h2 className="font-bold">Terms & Conditions</h2>
               <ul className="list-disc list-inside">
