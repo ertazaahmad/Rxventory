@@ -94,6 +94,9 @@ const Billing = () => {
   };
 
   const handleNewBill = async () => {
+    // DO NOT restore inventory - NEW BILL means the previous bill is finalized
+    // Inventory has already been deducted during billing
+    
     localStorage.removeItem("billingDraft");
 
     setPatient({
@@ -117,6 +120,38 @@ const Billing = () => {
         hour12: true,
       }),
     });
+  };
+
+  // Function to cancel/discard a bill and restore inventory
+  const handleCancelBill = async () => {
+    if (window.confirm("Are you sure you want to cancel this bill? All items will be restored to inventory.")) {
+      await restoreInventoryQuantities();
+      await handleNewBill();
+    }
+  };
+
+  // Function to restore inventory quantities when bill is cleared
+  const restoreInventoryQuantities = async () => {
+    if (!user) return;
+
+    for (const item of billItems) {
+      if (item.medicineId && item.qty > 0) {
+        const medRef = doc(db, "users", user.uid, "medicines", item.medicineId);
+        const medSnap = await getDoc(medRef);
+        
+        if (medSnap.exists()) {
+          const currentQty = medSnap.data().qty || 0;
+          const newQty = currentQty + Number(item.qty);
+          
+          await updateDoc(medRef, {
+            qty: newQty,
+          });
+        }
+      }
+    }
+    
+    // Refresh inventory
+    fetchInventory();
   };
 
   const handleSavePharmacy = async () => {
@@ -253,23 +288,44 @@ const Billing = () => {
     localStorage.setItem("billingDraft", JSON.stringify(draftBill));
   }, [patient, invoiceMeta, billItems, isInitialized]);
 
-  useEffect(() => {
+  // Fetch inventory
+  const fetchInventory = async () => {
     if (!user) return;
+    
+    const ref = collection(db, "users", user.uid, "medicines");
+    const snap = await getDocs(ref);
 
-    const fetchInventory = async () => {
-      const ref = collection(db, "users", user.uid, "medicines");
-      const snap = await getDocs(ref);
+    const list = snap.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+    }));
 
-      const list = snap.docs.map((d) => ({
-        id: d.id,
-        ...d.data(),
-      }));
+    setInventory(list);
+  };
 
-      setInventory(list);
-    };
-
+  useEffect(() => {
     fetchInventory();
   }, [user]);
+
+  // Update inventory quantity in Firestore
+  const updateInventoryQty = async (medicineId, qtyChange) => {
+    if (!user || !medicineId) return;
+
+    const medRef = doc(db, "users", user.uid, "medicines", medicineId);
+    const medSnap = await getDoc(medRef);
+    
+    if (medSnap.exists()) {
+      const currentQty = medSnap.data().qty || 0;
+      const newQty = currentQty - qtyChange; // Subtract the change
+      
+      await updateDoc(medRef, {
+        qty: newQty,
+      });
+      
+      // Refresh inventory
+      fetchInventory();
+    }
+  };
 
   // Calculate totals
   const calculateTotals = () => {
@@ -389,30 +445,75 @@ const Billing = () => {
           /* Header section with borders */
           .header-section {
             border-bottom: 2px solid black !important;
-            padding: 8px 16px !important;
+            padding: 6px 16px !important;
             height: auto !important;
             display: grid !important;
             grid-template-columns: 1fr 1fr 1fr !important;
-            gap: 60px !important;
+            gap: 40px !important;
           }
           
-          .header-section input {
+          /* Pharmacy info (first column) */
+          .header-section > div:nth-child(1) {
+            gap: 1px !important;
+          }
+          
+          .header-section > div:nth-child(1) h3 {
+            font-size: 14px !important;
+            font-weight: 800 !important;
+            margin: 0 !important;
+          }
+          
+          .header-section > div:nth-child(1) p {
+            font-size: 11px !important;
+            margin: 0 !important;
+            font-weight: 700 !important;
+            line-height: 1.3 !important;
+          }
+          
+          /* Patient info (middle column) */
+          .header-section > div:nth-child(2) {
+            gap: 1px !important;
+          }
+          
+          .header-section > div:nth-child(2) input {
             border: none !important;
             outline: none !important;
             background: transparent !important;
             display: inline !important;
-            width: auto !important;
-            max-width: 150px !important;
-            font-size: 9px !important;
+            font-size: 11px !important;
+            font-weight: 700 !important;
+            max-width: 200px !important;
+          }
+          
+          .header-section > div:nth-child(2) p {
+            font-size: 11px !important;
+            margin: 0 !important;
+            font-weight: 700 !important;
+            line-height: 2 !important;
+          }
+          
+          .header-section > div:nth-child(2) span {
+            font-weight: 700 !important;
+          }
+          
+          /* Invoice info (third column) */
+          .header-section > div:nth-child(3) {
+            gap: 1px !important;
+          }
+          
+          .header-section > div:nth-child(3) > div {
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            margin: 0 !important;
+            line-height: 2 !important;
+          }
+          
+          .header-section > div:nth-child(3) span {
+            font-weight: 700 !important;
           }
           
           .header-section input::placeholder {
             color: transparent !important;
-          }
-          
-          .header-section p {
-            font-size: 9px !important;
-            margin: 2px 0 !important;
           }
         }
       `}</style>
@@ -482,11 +583,17 @@ const Billing = () => {
                 "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
               onClick: () => handleNewBill(),
             },
+            {
+              label: "CANCEL BILL",
+              className:
+                "focus:ring-red-900/60 rounded-xl bg-red-400 hover:bg-red-500",
+              onClick: () => handleCancelBill(),
+            },
           ]}
           showSearch={false}
         />
         <main id="print-area" className="border m-2 mb-1 h-[calc(100vh-11rem)]">
-          <div className="pl-4  border-b border-black h-24 grid grid-cols-3 gap-16 header-section">
+          <div className="pl-4 border-b border-black h-24 grid grid-cols-3 gap-16 header-section">
             <div className="flex flex-col gap-1">
               <h3 className="text-blue-600 font-extrabold">
                 {userData?.pharmacyName || "—"}
@@ -495,7 +602,7 @@ const Billing = () => {
               <p>Phone: +91 {userData?.pharmacyPhone || "—"}</p>
               <p>GSTIN: {userData?.pharmacyGSTIN || "—"}</p>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 ml-28">
               <p>
                 <span>Patient:</span>{" "}
                 <input
@@ -527,7 +634,7 @@ const Billing = () => {
                 />
               </p>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 ml-48">
               <div>
                 <span className="font-semibold">Invoice No:</span>{" "}
                 {invoiceMeta.invoiceNo}
@@ -616,6 +723,7 @@ const Billing = () => {
                               rate: match.total / match.pack,
                               gstPercent: 12,
                               originalStock: match.qty,
+                              status: match.status || "In Stock", // Get status from inventory
                               qty: 0,
                             };
                           }
@@ -661,20 +769,46 @@ const Billing = () => {
                       <input
                         type="number"
                         value={item.qty}
-                        onChange={(e) => {
-                          const qty = Number(e.target.value) || 0;
+                        min="0"
+                        onChange={async (e) => {
+                          const newQty = Number(e.target.value) || 0;
+                          
+                          // Prevent negative values
+                          if (newQty < 0) {
+                            return;
+                          }
+                          
                           const updated = [...billItems];
                           const currentItem = updated[index];
+                          const previousQty = Number(currentItem.qty) || 0;
 
-                          if (qty > currentItem.originalStock) {
-                            alert("Insufficient stock");
+                          // Get current inventory stock
+                          const inventoryItem = inventory.find(
+                            (m) => m.id === currentItem.medicineId
+                          );
+                          
+                          // Calculate total available = current inventory + what we already took for this bill item
+                          const currentInventoryQty = inventoryItem ? inventoryItem.qty : 0;
+                          const totalAvailable = currentInventoryQty + previousQty;
+
+                          // Check if new quantity exceeds total available stock
+                          if (newQty > totalAvailable) {
+                            alert(`Insufficient stock. Available: ${totalAvailable}`);
                             return;
                           }
 
-                          currentItem.qty = qty;
+                          // Calculate the difference
+                          const qtyDifference = newQty - previousQty;
+
+                          // Update inventory
+                          if (currentItem.medicineId && qtyDifference !== 0) {
+                            await updateInventoryQty(currentItem.medicineId, qtyDifference);
+                          }
+
+                          currentItem.qty = newQty;
 
                           // Calculate based on MRP (not rate)
-                          const baseAmount = qty * Number(currentItem.mrp || 0);
+                          const baseAmount = newQty * Number(currentItem.mrp || 0);
                           const gstAmount = (baseAmount * gstPercent) / 100;
 
                           currentItem.gstAmount = gstAmount;
@@ -691,8 +825,15 @@ const Billing = () => {
                       <input
                         type="number"
                         value={item.packSize}
+                        min="0"
                         onChange={(e) => {
                           const packSize = Number(e.target.value) || 0;
+                          
+                          // Prevent negative values
+                          if (packSize < 0) {
+                            return;
+                          }
+                          
                           const updated = [...billItems];
                           updated[index].packSize = packSize;
                           setBillItems(updated);
@@ -708,8 +849,15 @@ const Billing = () => {
                         <input
                           type="number"
                           value={item.rate}
+                          min="0"
                           onChange={(e) => {
                             const rate = Number(e.target.value) || 0;
+                            
+                            // Prevent negative values
+                            if (rate < 0) {
+                              return;
+                            }
+                            
                             const updated = [...billItems];
                             updated[index].rate = rate;
                             setBillItems(updated);
@@ -727,8 +875,15 @@ const Billing = () => {
                         <input
                           type="number"
                           value={item.mrp}
+                          min="0"
                           onChange={(e) => {
                             const mrp = Number(e.target.value) || 0;
+                            
+                            // Prevent negative values
+                            if (mrp < 0) {
+                              return;
+                            }
+                            
                             const updated = [...billItems];
                             const currentItem = updated[index];
                             
@@ -758,23 +913,42 @@ const Billing = () => {
                     {/* Amount (read-only) */}
                     <td className="p-1 border text-right">₹ {item.amount?.toFixed(2) || "0.00"}</td>
 
-                    {/* Status */}
+                    {/* Status - Display from inventory */}
                     <td className="p-1 border print-hide">
-                      <input
-                        value={item.status}
-                        onChange={(e) => {
-                          const updated = [...billItems];
-                          updated[index].status = e.target.value;
-                          setBillItems(updated);
-                        }}
-                        className="w-full"
-                      />
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        item.status === "In Stock" 
+                          ? "bg-green-200 text-green-800" 
+                          : item.status === "Low Stock"
+                          ? "bg-yellow-200 text-yellow-800"
+                          : "bg-gray-200 text-gray-800"
+                      }`}>
+                        {item.status || "—"}
+                      </span>
                     </td>
 
                     {/* Actions */}
                     <td className="p-1 border text-center justify-around flex print-hide">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
+                          const itemToDelete = billItems[index];
+                          
+                          // Restore quantity to inventory if item was selected
+                          if (itemToDelete.medicineId && itemToDelete.qty > 0) {
+                            const medRef = doc(db, "users", user.uid, "medicines", itemToDelete.medicineId);
+                            const medSnap = await getDoc(medRef);
+                            
+                            if (medSnap.exists()) {
+                              const currentQty = medSnap.data().qty || 0;
+                              const newQty = currentQty + Number(itemToDelete.qty);
+                              
+                              await updateDoc(medRef, {
+                                qty: newQty,
+                              });
+                              
+                              fetchInventory();
+                            }
+                          }
+                          
                           const updated = billItems.filter(
                             (_, i) => i !== index,
                           );
