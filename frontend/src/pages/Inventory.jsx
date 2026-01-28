@@ -105,6 +105,7 @@ const Inventory = () => {
       pack: 1,
       total: 0,
       unit: "Tablet",
+      rate: 0,
       minStock: 0,
       status: "In Stock",
       createdAt: serverTimestamp(),
@@ -184,7 +185,7 @@ const Inventory = () => {
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={() => saveField(med, field)}
-              className="border px-1 py-1 w-full text-xs sm:text-sm"
+              className="border px-2 py-2 w-full text-xs sm:text-sm "
             >
               {options.map((o) => (
                 <option key={o}>{o}</option>
@@ -200,12 +201,12 @@ const Inventory = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter") saveField(med, field);
               }}
-              className="border px-1 w-full text-xs sm:text-sm min-h-[44px] sm:min-h-0"
+              className="border px-2 py-2 w-full text-xs sm:text-sm "
             />
           )
         ) : (
           <span
-            className="cursor-pointer font-medium block min-h-[44px] sm:min-h-0 flex items-center"
+            className="cursor-pointer font-medium block py-2 sm:py-0"
             onClick={() => {
               setEditingCell({ id: med.id, field });
               setEditValue(value ?? "");
@@ -240,10 +241,10 @@ const getExpiryType = (expiry) => {
 
 
 const filteredMedicines = medicines.filter((med) => {
-  // SEARCH
+  // SEARCH - with null safety
   const matchesSearch =
     !search ||
-    med.generic?.toLowerCase().includes(search.toLowerCase());
+    (med.generic && med.generic.toLowerCase().includes(search.toLowerCase()));
 
   // EXPIRY TYPE
   const expiryType = getExpiryType(med.expiry);
@@ -363,15 +364,14 @@ const filteredMedicines = medicines.filter((med) => {
           </p>
         </div>
 
-        {/* Mobile: Show simplified card view, Desktop: Show full table */}
+        {/* Mobile: Show editable card view, Desktop: Show full table */}
         <div className="block lg:hidden">
           {/* MOBILE CARD VIEW */}
           {filteredMedicines.map((med, i) => (
-            <div key={med.id} className="bg-white border-b p-3 hover:bg-gray-50">
-              <div className="flex justify-between items-start mb-2">
+            <div key={med.id} className="bg-white border-b p-3">
+              <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
-                  <div className="font-bold text-sm">{i + 1}. {med.generic || "—"}</div>
-                  <div className="text-xs text-gray-600">{med.brand || "—"}</div>
+                  <div className="font-bold text-sm mb-1">{i + 1}. Medicine Details</div>
                 </div>
                 <span className={`px-2 py-1 rounded text-xs ${
                   med.status === "In Stock" 
@@ -384,18 +384,178 @@ const filteredMedicines = medicines.filter((med) => {
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div><span className="text-gray-600">Batch:</span> {med.batch || "—"}</div>
-                <div><span className="text-gray-600">Expiry:</span> {med.expiry || "—"}</div>
-                <div><span className="text-gray-600">Qty:</span> {med.qty}</div>
-                <div><span className="text-gray-600">Pack:</span> {med.pack}</div>
-                <div><span className="text-gray-600">Total:</span> {med.total}</div>
-                <div><span className="text-gray-600">Unit:</span> {med.unit}</div>
+              <div className="space-y-2">
+                {/* Generic Name */}
+                <div>
+                  <label className="text-xs text-gray-600 font-semibold block mb-1">Generic Name:</label>
+                  <input
+                    type="text"
+                    value={med.generic || ""}
+                    onChange={(e) => {
+                      const ref = doc(db, "users", user.uid, "medicines", med.id);
+                      updateDoc(ref, { generic: e.target.value });
+                      fetchMedicines();
+                    }}
+                    className="w-full border rounded px-2 py-2 text-sm "
+                    placeholder="Enter generic name"
+                  />
+                </div>
+
+                {/* Brand */}
+                <div>
+                  <label className="text-xs text-gray-600 font-semibold block mb-1">Brand:</label>
+                  <input
+                    type="text"
+                    value={med.brand || ""}
+                    onChange={(e) => {
+                      const ref = doc(db, "users", user.uid, "medicines", med.id);
+                      updateDoc(ref, { brand: e.target.value });
+                      fetchMedicines();
+                    }}
+                    className="w-full border rounded px-2 py-2 text-sm "
+                    placeholder="Enter brand"
+                  />
+                </div>
+
+                {/* Batch and Expiry Row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-600 font-semibold block mb-1">Batch:</label>
+                    <input
+                      type="text"
+                      value={med.batch || ""}
+                      onChange={(e) => {
+                        const ref = doc(db, "users", user.uid, "medicines", med.id);
+                        updateDoc(ref, { batch: e.target.value });
+                        fetchMedicines();
+                      }}
+                      className="w-full border rounded px-2 py-2 text-sm "
+                      placeholder="Batch"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 font-semibold block mb-1">Expiry:</label>
+                    <input
+                      type="month"
+                      value={med.expiry || ""}
+                      onChange={(e) => {
+                        const ref = doc(db, "users", user.uid, "medicines", med.id);
+                        updateDoc(ref, { expiry: e.target.value });
+                        fetchMedicines();
+                      }}
+                      className="w-full border rounded px-2 py-2 text-sm "
+                    />
+                  </div>
+                </div>
+
+                {/* Qty and Pack Row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-600 font-semibold block mb-1">Qty:</label>
+                    <input
+                      type="number"
+                      value={med.qty || 0}
+                      onChange={(e) => {
+                        const newQty = Number(e.target.value) || 0;
+                        const ref = doc(db, "users", user.uid, "medicines", med.id);
+                        const newTotal = newQty * (med.pack || 1);
+                        
+                        let newStatus = "In Stock";
+                        if (newQty === 0) {
+                          newStatus = "Out of Stock";
+                        } else if (newQty <= (med.minStock || 0)) {
+                          newStatus = "Low Stock";
+                        }
+                        
+                        updateDoc(ref, { 
+                          qty: newQty,
+                          total: newTotal,
+                          status: newStatus
+                        });
+                        fetchMedicines();
+                      }}
+                      className="w-full border rounded px-2 py-2 text-sm "
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 font-semibold block mb-1">Pack:</label>
+                    <input
+                      type="number"
+                      value={med.pack || 1}
+                      onChange={(e) => {
+                        const newPack = Number(e.target.value) || 1;
+                        const ref = doc(db, "users", user.uid, "medicines", med.id);
+                        const newTotal = (med.qty || 0) * newPack;
+                        updateDoc(ref, { 
+                          pack: newPack,
+                          total: newTotal
+                        });
+                        fetchMedicines();
+                      }}
+                      className="w-full border rounded px-2 py-2 text-sm "
+                    />
+                  </div>
+                </div>
+
+                {/* Unit and Min Stock Row */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-600 font-semibold block mb-1">Unit:</label>
+                    <select
+                      value={med.unit || "Tablet"}
+                      onChange={(e) => {
+                        const ref = doc(db, "users", user.uid, "medicines", med.id);
+                        updateDoc(ref, { unit: e.target.value });
+                        fetchMedicines();
+                      }}
+                      className="w-full border rounded px-2 py-2 text-sm "
+                    >
+                      <option>Tablet</option>
+                      <option>Capsule</option>
+                      <option>Syrup</option>
+                      <option>Injection</option>
+                      <option>Ointment</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-600 font-semibold block mb-1">Min Stock:</label>
+                    <input
+                      type="number"
+                      value={med.minStock || 0}
+                      onChange={(e) => {
+                        const newMinStock = Number(e.target.value) || 0;
+                        const ref = doc(db, "users", user.uid, "medicines", med.id);
+                        
+                        let newStatus = "In Stock";
+                        if ((med.qty || 0) === 0) {
+                          newStatus = "Out of Stock";
+                        } else if ((med.qty || 0) <= newMinStock) {
+                          newStatus = "Low Stock";
+                        }
+                        
+                        updateDoc(ref, { 
+                          minStock: newMinStock,
+                          status: newStatus
+                        });
+                        fetchMedicines();
+                      }}
+                      className="w-full border rounded px-2 py-2 text-sm "
+                    />
+                  </div>
+                </div>
+
+                {/* Total (read-only) */}
+                <div>
+                  <label className="text-xs text-gray-600 font-semibold block mb-1">Total:</label>
+                  <div className="w-full border rounded px-2 py-2 text-sm bg-gray-100  flex items-center">
+                    {med.total || 0}
+                  </div>
+                </div>
               </div>
               
               <button
                 onClick={() => deleteMedicine(med.id)}
-                className="mt-2 bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded text-xs w-full active:scale-95 transition"
+                className="mt-3 bg-red-500 hover:bg-red-700 text-white px-3 py-2 rounded text-sm w-full active:scale-95 transition "
               >
                 Delete
               </button>
@@ -416,6 +576,7 @@ const filteredMedicines = medicines.filter((med) => {
               <th className="border p-2">Pack </th>
               <th className="border p-2">Total</th>
               <th className="border p-2">Unit</th>
+              <th className="border p-2">Rate</th>
               <th className="border p-2">Min</th>
               <th className="border p-2">
                 <div className="relative inline-flex items-center gap-2">
@@ -520,49 +681,19 @@ const filteredMedicines = medicines.filter((med) => {
                 <EditableCell med={med} field="generic" value={med.generic} />
                 <EditableCell med={med} field="brand" value={med.brand} />
                 <EditableCell med={med} field="batch" value={med.batch} />
-                <EditableCell
-                  med={med}
-                  field="expiry"
-                  value={med.expiry}
-                  type="month"
-                />
-                <EditableCell
-                  med={med}
-                  field="qty"
-                  value={med.qty}
-                  type="number"
-                />
-                <EditableCell
-                  med={med}
-                  field="pack"
-                  value={med.pack}
-                  type="number"
-                />
+                <EditableCell med={med} field="expiry" value={med.expiry} type="month" />
+                <EditableCell med={med} field="qty" value={med.qty} type="number" />
+                <EditableCell med={med} field="pack" value={med.pack} type="number" />
 
                 <td className="border p-2 font-semibold text-xs lg:text-sm">{med.total}</td>
 
-                <EditableCell
-                  med={med}
-                  field="unit"
-                  value={med.unit}
-                  type="select"
-                  options={["Tablet", "Capsule", "Syrup", "Injection", "Ointment"]}
-                />
+                <EditableCell med={med} field="unit" value={med.unit} type="select" options={["Tablet", "Capsule", "Syrup", "Injection", "Ointment"]} />
 
-                <EditableCell
-                  med={med}
-                  field="minStock"
-                  value={med.minStock}
-                  type="number"
-                />
+                <EditableCell med={med} field="rate" value={med.rate} type="number" />
 
-                <EditableCell
-                  med={med}
-                  field="status"
-                  value={med.status}
-                  type="select"
-                  options={["In Stock", "Low Stock", "Out of Stock"]}
-                />
+                <EditableCell med={med} field="minStock" value={med.minStock} type="number" />
+
+                <EditableCell med={med} field="status" value={med.status} type="select" options={["In Stock", "Low Stock", "Out of Stock"]} />
 
                 <td className="border p-2 no-print">
                   <button

@@ -24,7 +24,7 @@ const Billing = () => {
   const [gstPercent, setGstPercent] = useState(12);
 
   const emptyRow = {
-    genericName: "",
+    generic: "",
     brand: "",
     batch: "",
     expiry: "",
@@ -39,7 +39,7 @@ const Billing = () => {
   const [billItems, setBillItems] = useState([emptyRow]);
 
   const createEmptyRow = () => ({
-    genericName: "",
+    generic: "",
     brand: "",
     batch: "",
     expiry: "",
@@ -245,16 +245,21 @@ const Billing = () => {
   }, [isInitialized, loadingUserData, showPopup]);
 
   // SAVE DRAFT whenever patient or invoiceMeta changes (but not on first mount)
+  // Debounced to prevent interference with typing
   useEffect(() => {
     if (!isInitialized) return;
 
-    const draftBill = {
-      patient,
-      invoiceMeta,
-      billItems,
-    };
+    const timeoutId = setTimeout(() => {
+      const draftBill = {
+        patient,
+        invoiceMeta,
+        billItems,
+      };
 
-    localStorage.setItem("billingDraft", JSON.stringify(draftBill));
+      localStorage.setItem("billingDraft", JSON.stringify(draftBill));
+    }, 500); // Wait 500ms after last change before saving
+
+    return () => clearTimeout(timeoutId);
   }, [patient, invoiceMeta, billItems, isInitialized]);
 
   // Fetch inventory
@@ -662,72 +667,78 @@ const Billing = () => {
                     {/* Sr. No */}
                     <td className="p-1 border text-center text-xs">{index + 1}</td>
 
-                    {/* Generic Name */}
-                    <td className="p-1 border">
-                      <input
-                        value={item.genericName}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          const updated = [...billItems];
-                          updated[index].genericName = value;
+                 {/* Generic Name - FIXED */}
+<td className="p-1 border">
+  <input
+    type="text"
+    value={item.generic || ""}
+    onChange={(e) => {
+      const value = e.target.value;
+      const updated = [...billItems];
 
-                          const match = inventory.find(
-                            (m) =>
-                              m.generic?.toLowerCase() === value.toLowerCase(),
-                          );
+      // 1️⃣ Always allow typing freely
+      updated[index] = {
+        ...updated[index],
+        generic: value,
+      };
 
-                          if (match) {
-                            updated[index] = {
-                              ...updated[index],
-                              medicineId: match.id,
-                              genericName: match.generic,
-                              brand: match.brand,
-                              batch: match.batch,
-                              expiry: match.expiry,
-                              packSize: match.pack,
-                              mrp: match.total,
-                              rate: match.total / match.pack,
-                              gstPercent: 12,
-                              originalStock: match.qty,
-                              status: match.status || "In Stock", // Get status from inventory
-                              qty: 0,
-                            };
-                          }
+      // 2️⃣ Exact match ONLY (no partial match)
+      const match = inventory.find(
+        (m) =>
+          m.generic &&
+          m.generic.toLowerCase().trim() ===
+            value.toLowerCase().trim()
+      );
 
-                          setBillItems(updated);
-                        }}
-                        className="w-full"
-                      />
-                    </td>
+      // 3️⃣ Auto-fill ONLY on exact match
+      if (match) {
+        updated[index] = {
+          ...updated[index],
+          medicineId: match.id,
+          generic: match.generic,
+          brand: match.brand || "",
+          batch: match.batch || "",
+          expiry: match.expiry || "",
+          packSize: match.pack || 0,
+          mrp: match.total || 0,
+         rate: match.rate || 0,
+          gstPercent: 12,
+          originalStock: match.qty || 0,
+          status: match.status || "In Stock",
+          qty: updated[index].qty || 0, // preserve qty
+        };
+      }
 
-                    {/* Brand */}
-                    <td className="p-1 border">
-                      <input
-                        value={item.brand}
-                        onChange={(e) => {
-                          const updated = [...billItems];
-                          updated[index].brand = e.target.value;
-                          setBillItems(updated);
-                        }}
-                        className="w-full"
-                      />
-                    </td>
-                    {/* Batch No. */}
-                    <td className="p-1 border">
-                      <input
-                        value={item.batch}
-                        onChange={(e) => {
-                          const updated = [...billItems];
-                          updated[index].batch = e.target.value;
-                          setBillItems(updated);
-                        }}
-                        className="w-full"
-                      />
-                    </td>
+      setBillItems(updated);
+    }}
+    className="w-full px-2 "
+    placeholder="Type generic name..."
+    autoComplete="off"
+  />
+</td>
 
-                    {/* Expiry */}
+
+                    {/* Brand - READ-ONLY when auto-filled */}
+               <td className="p-1 border text-center">
+  <div className="flex items-center justify-center">
+    {item.brand || "—"}
+  </div>
+</td>
+
+
+                    {/* Batch No. - READ-ONLY when auto-filled */}
+                <td className="p-1 border text-center">
+  <div className="flex items-center justify-center">
+    {item.batch || "—"}
+  </div>
+</td>
+
+
+                    {/* Expiry - ALWAYS READ-ONLY */}
                     <td className="p-1 border text-center">
-                      {item.expiry || "—"}
+                      <div className="flex items-center justify-center">
+                        {item.expiry || "—"}
+                      </div>
                     </td>
 
                     {/* Qty */}
@@ -782,65 +793,34 @@ const Billing = () => {
 
                           setBillItems(updated);
                         }}
-                        className="w-full text-right text-xs sm:text-sm min-h-[44px] sm:min-h-0"
+                        className="w-full text-right px-2"
+                        autoComplete="off"
                       />
                     </td>
 
-                    {/* Pack Size */}
-                    <td className="p-1 border">
-                      <input
-                        type="number"
-                        value={item.packSize}
-                        min="0"
-                        onChange={(e) => {
-                          const packSize = Number(e.target.value) || 0;
-                          
-                          // Prevent negative values
-                          if (packSize < 0) {
-                            return;
-                          }
-                          
-                          const updated = [...billItems];
-                          updated[index].packSize = packSize;
-                          setBillItems(updated);
-                        }}
-                        className="w-full text-right text-xs sm:text-sm min-h-[44px] sm:min-h-0"
-                      />
-                    </td>
+                    {/* Pack Size - READ-ONLY when auto-filled */}
+                  <td className="p-1 border text-center">
+  <div className=" flex items-center justify-center">
+    {item.packSize || "—"}
+  </div>
+</td>
 
-                    {/* Rate (for display only) */}
-                    <td className="py-1 px-4 border">
-                      <div className="relative flex items-center">
-                        <span className="absolute left-2">₹</span>
-                        <input
-                          type="number"
-                          value={item.rate}
-                          min="0"
-                          onChange={(e) => {
-                            const rate = Number(e.target.value) || 0;
-                            
-                            // Prevent negative values
-                            if (rate < 0) {
-                              return;
-                            }
-                            
-                            const updated = [...billItems];
-                            updated[index].rate = rate;
-                            setBillItems(updated);
-                          }}
-                          className="w-full text-right pr-1"
-                          style={{ paddingLeft: '20px' }}
-                        />
-                      </div>
-                    </td>
+
+                    {/* Rate - when auto-filled */}
+       <td className="p-1 border text-center">
+  <div className=" flex items-center justify-center">
+    ₹ {item.rate ?? "—"}
+  </div>
+</td>
+
 
                     {/* MRP (used for calculations) */}
-                    <td className="py-1 px-4 border">
+                    <td className="py-1 px-2 border">
                       <div className="relative flex items-center">
-                        <span className="absolute left-2">₹</span>
+                        <span className="absolute left-3 pointer-events-none">₹</span>
                         <input
                           type="number"
-                          value={item.mrp}
+                          value={item.mrp || ""}
                           min="0"
                           onChange={(e) => {
                             const mrp = Number(e.target.value) || 0;
@@ -865,8 +845,7 @@ const Billing = () => {
 
                             setBillItems(updated);
                           }}
-                          className="w-full text-right pr-1"
-                          style={{ paddingLeft: '20px' }}
+                          className="w-full text-right pr-2 pl-6"
                         />
                       </div>
                     </td>
@@ -886,50 +865,52 @@ const Billing = () => {
                           ? "bg-green-200 text-green-800" 
                           : item.status === "Low Stock"
                           ? "bg-yellow-200 text-yellow-800"
-                          : "bg-gray-200 text-gray-800"
+                          : "bg-red-200 text-red-800"
                       }`}>
                         {item.status || "—"}
                       </span>
                     </td>
 
                     {/* Actions */}
-                    <td className="p-1 border text-center justify-around flex print-hide">
-                      <button
-                        onClick={async () => {
-                          const itemToDelete = billItems[index];
-                          
-                          // Restore quantity to inventory if item was selected
-                          if (itemToDelete.medicineId && itemToDelete.qty > 0) {
-                            const medRef = doc(db, "users", user.uid, "medicines", itemToDelete.medicineId);
-                            const medSnap = await getDoc(medRef);
+                    <td className="p-1 border print-hide">
+                      <div className="flex flex-col sm:flex-row justify-center gap-1 sm:gap-2">
+                        <button
+                          onClick={async () => {
+                            const itemToDelete = billItems[index];
                             
-                            if (medSnap.exists()) {
-                              const currentQty = medSnap.data().qty || 0;
-                              const newQty = currentQty + Number(itemToDelete.qty);
+                            // Restore quantity to inventory if item was selected
+                            if (itemToDelete.medicineId && itemToDelete.qty > 0) {
+                              const medRef = doc(db, "users", user.uid, "medicines", itemToDelete.medicineId);
+                              const medSnap = await getDoc(medRef);
                               
-                              await updateDoc(medRef, {
-                                qty: newQty,
-                              });
-                              
-                              fetchInventory();
+                              if (medSnap.exists()) {
+                                const currentQty = medSnap.data().qty || 0;
+                                const newQty = currentQty + Number(itemToDelete.qty);
+                                
+                                await updateDoc(medRef, {
+                                  qty: newQty,
+                                });
+                                
+                                fetchInventory();
+                              }
                             }
-                          }
-                          
-                          const updated = billItems.filter(
-                            (_, i) => i !== index,
-                          );
-                          setBillItems(updated.length ? updated : [emptyRow]);
-                        }}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        onClick={() => addRowAt(index + 1)}
-                        className="text-blue-600 hover:text-blue-800"
-                      >
-                        Add
-                      </button>
+                            
+                            const updated = billItems.filter(
+                              (_, i) => i !== index,
+                            );
+                            setBillItems(updated.length ? updated : [emptyRow]);
+                          }}
+                          className="text-red-600 hover:text-red-800 px-3 py-2 text-xs font-semibold whitespace-nowrap touch-manipulation"
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={() => addRowAt(index + 1)}
+                          className="text-blue-600 hover:text-blue-800 px-3 py-2 text-xs font-semibold whitespace-nowrap touch-manipulation"
+                        >
+                          Add
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
