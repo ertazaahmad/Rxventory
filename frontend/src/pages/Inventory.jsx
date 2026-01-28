@@ -205,15 +205,19 @@ const Inventory = () => {
             />
           )
         ) : (
-          <span
-            className="cursor-pointer font-medium block py-2 sm:py-0"
-            onClick={() => {
-              setEditingCell({ id: med.id, field });
-              setEditValue(value ?? "");
-            }}
-          >
-            {value || "—"}
-          </span>
+     <span
+  className="cursor-pointer font-medium block py-2 sm:py-0"
+  onClick={() => {
+    setEditingCell({ id: med.id, field });
+    setEditValue(value ?? "");
+  }}
+>
+  {field === "rate"
+    ? value !== undefined && value !== null && value !== ""
+      ? `₹ ${value}`
+      : "—"
+    : value || "—"}
+</span>
         )}
       </td>
     );
@@ -544,13 +548,43 @@ const filteredMedicines = medicines.filter((med) => {
                   </div>
                 </div>
 
-                {/* Total (read-only) */}
-                <div>
-                  <label className="text-xs text-gray-600 font-semibold block mb-1">Total:</label>
-                  <div className="w-full border rounded px-2 py-2 text-sm bg-gray-100  flex items-center">
-                    {med.total || 0}
-                  </div>
-                </div>
+               {/* Rate and Total Row */}
+<div className="grid grid-cols-2 gap-2">
+ {/* Rate */}
+<div>
+  <label className="text-xs text-gray-600 font-semibold block mb-1">
+    Rate:
+  </label>
+
+  <div className="flex items-center border rounded bg-white">
+    <span className="px-3 text-gray-700 select-none">₹</span>
+
+    <input
+      type="number"
+      value={med.rate ?? ""}
+      onChange={(e) => {
+        const newRate = Number(e.target.value) || 0;
+        const ref = doc(db, "users", user.uid, "medicines", med.id);
+        updateDoc(ref, { rate: newRate });
+        fetchMedicines();
+      }}
+      className="flex-1 outline-none px-2 py-2 text-sm"
+      min="0"
+    />
+  </div>
+</div>
+
+
+  {/* Total (read-only) */}
+  <div>
+    <label className="text-xs text-gray-600 font-semibold block mb-1">
+      Total:
+    </label>
+    <div className="w-full border rounded px-2 py-2 text-sm bg-gray-100 flex items-center">
+      {med.total || 0}
+    </div>
+  </div>
+</div>
               </div>
               
               <button
