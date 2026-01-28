@@ -6,13 +6,14 @@ import { useAuth } from "../context/AuthContext";
 import {doc, getDoc, setDoc, serverTimestamp, runTransaction} from "firebase/firestore";
 
 
+
 const Login = () => {
 
     const { user } = useAuth();
 
-  if (user) {
-    return <Navigate to="/" replace />;
-  }
+  // if (user) {
+  //   return <Navigate to="/" replace />;
+  // }
 
   const navigate = useNavigate();
 
@@ -20,6 +21,11 @@ const Login = () => {
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+
+ const token = await result.user.getIdToken();
+console.log("FIREBASE_ID_TOKEN:", token);
+
+
 
 const user = result.user; // Firebase Auth user
 

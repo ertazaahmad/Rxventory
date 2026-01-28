@@ -615,7 +615,7 @@ const Billing = () => {
 
           <div className="m-2 h-[48vh] overflow-y-auto overflow-x-auto scrollbar-hide table-container">
             <table className="w-full text-left divide-y divide-gray-400">
-              <thead className="bg-gray-300 sticky top-0 z-10">
+              <thead className="bg-gray-300 sticky top-0 z-10 text-center">
                 <tr className="text-sm font-semibold">
                   <th className="px-2 py-1" style={{ width: 50 }}>
                     Sr.
@@ -728,7 +728,7 @@ const Billing = () => {
                     </td>
 
                     {/* Qty */}
-                    <td className="p-1 border ">
+                    <td className="p-1 border">
                       <input
                         type="number"
                         value={item.qty}
@@ -877,8 +877,8 @@ const Billing = () => {
                     <td className="p-1 border text-right">₹ {item.amount?.toFixed(2) || "0.00"}</td>
 
                     {/* Status - Display from inventory */}
-                    <td className="p-1 border print-hide">
-                      <span className={`px-2 py-1 rounded text-xs ${
+                    <td className="p-1 border print-hide pl-6">
+                      <span className={`px-2 py-0.5 rounded text-xs ${
                         item.status === "In Stock" 
                           ? "bg-green-200 text-green-800" 
                           : item.status === "Low Stock"

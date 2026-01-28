@@ -1,9 +1,14 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const Subscription = () => {
 
+const { user, userDoc } = useAuth();
  const navigate = useNavigate();
-    
+const isFirstTime = userDoc?.hasPurchasedProBefore === false;
+ const price = isFirstTime ? 249 : 349; 
+
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center text-white py-12">
       {/* Outer Container */}
@@ -65,7 +70,7 @@ const Subscription = () => {
           {/* PRO PLAN */}
           <div className="border border-white/30 rounded-xl p-6 bg-white/10">
             <h3 className="text-lg font-semibold mb-1">PRO</h3>
-            <p className="text-sm text-white/60 mb-4">₹399 / month</p>
+            <p className="text-sm text-white/60 mb-4">₹{price} / month</p>
 
             <button className="w-full py-2 mb-6 rounded-md bg-purple-600 hover:bg-purple-700 transition text-sm">
               UPGRADE TO PRO
