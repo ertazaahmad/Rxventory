@@ -487,9 +487,9 @@ const Billing = () => {
         }
       `}</style>
       {!loadingUserData && showPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-96">
-            <h2 className="text-xl font-bold mb-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md sm:w-96">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">
               Complete Pharmacy Details
             </h2>
 
@@ -498,7 +498,7 @@ const Billing = () => {
               placeholder="Pharmacy Name"
               value={pharmacyName}
               onChange={(e) => setPharmacyName(e.target.value)}
-              className="w-full border p-2 mb-3"
+              className="w-full border p-2 mb-3 text-sm sm:text-base"
             />
 
             <input
@@ -506,7 +506,7 @@ const Billing = () => {
               placeholder="Pharmacy Address"
               value={pharmacyAddress}
               onChange={(e) => setPharmacyAddress(e.target.value)}
-              className="w-full border p-2 mb-4"
+              className="w-full border p-2 mb-4 text-sm sm:text-base"
             />
 
             <input
@@ -514,7 +514,7 @@ const Billing = () => {
               placeholder="Pharmacy Phone"
               value={pharmacyPhone}
               onChange={(e) => setPharmacyPhone(e.target.value)}
-              className="w-full border p-2 mb-4"
+              className="w-full border p-2 mb-4 text-sm sm:text-base"
             />
 
             <input
@@ -522,12 +522,12 @@ const Billing = () => {
               placeholder="Pharmacy GSTIN"
               value={pharmacyGSTIN}
               onChange={(e) => setPharmacyGSTIN(e.target.value)}
-              className="w-full border p-2 mb-4"
+              className="w-full border p-2 mb-4 text-sm sm:text-base"
             />
 
             <button
               onClick={handleSavePharmacy}
-              className="w-full bg-blue-600 text-white p-2 rounded"
+              className="w-full bg-blue-600 text-white p-2 rounded text-sm sm:text-base active:scale-95 transition"
             >
               Save & Continue
             </button>
@@ -535,7 +535,7 @@ const Billing = () => {
         </div>
       )}
 
-      <div className="min-h-[calc(100vh-6rem)] m-2 p-4 pb-1 bg-gray-200 rounded-xl text-sm font-medium">
+      <div className="min-h-[calc(100vh-6rem)] m-1 sm:m-2 p-2 sm:p-4 pb-1 bg-gray-200 rounded-xl text-xs sm:text-sm font-medium">
         <Actionbar
           primarycolor="focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500"
           secondarycolor="focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500"
@@ -555,82 +555,85 @@ const Billing = () => {
           ]}
           showSearch={false}
         />
-        <main id="print-area" className="border m-2 mb-1 h-[calc(100vh-11rem)]">
-          <div className="pl-4 border-b border-black h-24 grid grid-cols-3 gap-16 header-section">
+        <main id="print-area" className="border m-1 sm:m-2 mb-1 min-h-[calc(100vh-14rem)] sm:h-[calc(100vh-11rem)] flex flex-col">
+          <div className="pl-2 sm:pl-4 border-b border-black py-3 sm:py-0 sm:h-24 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-16 header-section flex-shrink-0">
             <div className="flex flex-col gap-1">
-              <h3 className="text-blue-600 font-extrabold">
+              <h3 className="text-blue-600 font-extrabold text-sm sm:text-base">
                 {userData?.pharmacyName || "—"}
               </h3>
-              <p>{userData?.pharmacyAddress || "—"}</p>
-              <p>Phone: +91 {userData?.pharmacyPhone || "—"}</p>
-              <p>GSTIN: {userData?.pharmacyGSTIN || "—"}</p>
+              <p className="text-xs sm:text-sm">{userData?.pharmacyAddress || "—"}</p>
+              <p className="text-xs sm:text-sm">Phone: +91 {userData?.pharmacyPhone || "—"}</p>
+              <p className="text-xs sm:text-sm">GSTIN: {userData?.pharmacyGSTIN || "—"}</p>
             </div>
-            <div className="flex flex-col gap-3 ml-28">
-              <p>
-                <span>Patient:</span>{" "}
+            <div className="flex flex-col gap-2 sm:gap-3 sm:ml-28">
+              <p className="text-xs sm:text-sm">
+                <span className="font-semibold">Patient:</span>{" "}
                 <input
                   value={patient.name}
                   placeholder="Enter Patient Name"
                   onChange={(e) =>
                     setPatient({ ...patient, name: e.target.value })
                   }
+                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1"
                 />
               </p>
-              <p>
-                <span>Address:</span>{" "}
+              <p className="text-xs sm:text-sm">
+                <span className="font-semibold">Address:</span>{" "}
                 <input
                   value={patient.address}
                   placeholder="Enter Patient Address"
                   onChange={(e) =>
                     setPatient({ ...patient, address: e.target.value })
                   }
+                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1"
                 />
               </p>
-              <p>
-                <span>Doctor:</span>{" "}
+              <p className="text-xs sm:text-sm">
+                <span className="font-semibold">Doctor:</span>{" "}
                 <input
                   value={patient.doctor}
                   placeholder="Enter Doctor Name"
                   onChange={(e) =>
                     setPatient({ ...patient, doctor: e.target.value })
                   }
+                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1"
                 />
               </p>
             </div>
-            <div className="flex flex-col gap-3 ml-48">
-              <div>
+            <div className="flex flex-col gap-2 sm:gap-3 sm:ml-48">
+              <div className="text-xs sm:text-sm">
                 <span className="font-semibold">Invoice No:</span>{" "}
                 {invoiceMeta.invoiceNo}
               </div>
 
-              <div>
+              <div className="text-xs sm:text-sm">
                 <span className="font-semibold">Date:</span> {invoiceMeta.date}
               </div>
 
-              <div>
+              <div className="text-xs sm:text-sm">
                 <span className="font-semibold">Time:</span> {invoiceMeta.time}
               </div>
             </div>
           </div>
 
-          <div className="m-2 h-[48vh] overflow-y-auto overflow-x-auto scrollbar-hide table-container">
-            <table className="w-full text-left divide-y divide-gray-400">
+          <div className="m-1 sm:m-2 flex-1 overflow-y-auto overflow-x-auto scrollbar-hide table-container">
+            <table className="w-full text-left divide-y divide-gray-400 min-w-[900px]">
               <thead className="bg-gray-300 sticky top-0 z-10 text-center">
-                <tr className="text-sm font-semibold">
-                  <th className="px-2 py-1" style={{ width: 50 }}>
+                <tr className="text-xs sm:text-sm font-semibold">
+                  <th className="px-1 sm:px-2 py-1" style={{ width: 40 }}>
                     Sr.
                   </th>
-                  <th className="px-2 py-1" style={{ width: 180 }}>
+                  <th className="px-1 sm:px-2 py-1" style={{ minWidth: 150 }}>
                     Generic Name
                   </th>
-                  <th className="px-2 py-1">Brand</th>
-                  <th className="px-2 py-1">Batch No.</th>
-                  <th className="px-2 py-1">Expiry</th>
-                  <th className="px-2 py-1">Qty </th>
-                  <th className="px-2 py-1">Pack Size</th>
-                  <th className="px-2 py-1">Rate</th>
-                  <th className="px-2 py-1">MRP</th>
-                  <th className="px-2 py-1">
+                  <th className="px-1 sm:px-2 py-1">Brand</th>
+                  <th className="px-1 sm:px-2 py-1">Batch No.</th>
+                  <th className="px-1 sm:px-2 py-1">Expiry</th>
+                  <th className="px-1 sm:px-2 py-1">Qty </th>
+                  <th className="px-1 sm:px-2 py-1">Pack Size</th>
+                  <th className="px-1 sm:px-2 py-1">Rate</th>
+                  <th className="px-1 sm:px-2 py-1">MRP</th>
+                  <th className="px-1 sm:px-2 py-1">
                     <div className="flex items-center gap-1 justify-center">
                       <span className="text-xs no-print">GST %</span>
                       <span className="hidden print:inline text-xs">GST {gstPercent}%</span>
@@ -640,16 +643,16 @@ const Billing = () => {
                         onChange={(e) =>
                           setGstPercent(Number(e.target.value) || 0)
                         }
-                        className="w-10 px-1 py-0.5 border border-gray-400 rounded text-center bg-white text-xs no-print"
+                        className="w-8 sm:w-10 px-1 py-0.5 border border-gray-400 rounded text-center bg-white text-xs no-print"
                         min="0"
                         max="99"
                       />
                     </div>
                   </th>
 
-                  <th className="px-2 py-1">Amount</th>
-                  <th className="px-2 py-1 print-hide">Status</th>
-                  <th className="px-2 py-1 print-hide">Actions</th>
+                  <th className="px-1 sm:px-2 py-1">Amount</th>
+                  <th className="px-1 sm:px-2 py-1 print-hide">Status</th>
+                  <th className="px-1 sm:px-2 py-1 print-hide">Actions</th>
                 </tr>
               </thead>
 
@@ -657,7 +660,7 @@ const Billing = () => {
                 {billItems.map((item, index) => (
                   <tr key={index} className="bg-white hover:bg-gray-100">
                     {/* Sr. No */}
-                    <td className="p-1 border text-center">{index + 1}</td>
+                    <td className="p-1 border text-center text-xs">{index + 1}</td>
 
                     {/* Generic Name */}
                     <td className="p-1 border">
@@ -779,7 +782,7 @@ const Billing = () => {
 
                           setBillItems(updated);
                         }}
-                        className="w-full text-right"
+                        className="w-full text-right text-xs sm:text-sm min-h-[44px] sm:min-h-0"
                       />
                     </td>
 
@@ -801,7 +804,7 @@ const Billing = () => {
                           updated[index].packSize = packSize;
                           setBillItems(updated);
                         }}
-                        className="w-full text-right"
+                        className="w-full text-right text-xs sm:text-sm min-h-[44px] sm:min-h-0"
                       />
                     </td>
 
@@ -934,10 +937,10 @@ const Billing = () => {
             </table>
           </div>
 
-          <div className="p-2 flex justify-between footer-section">
-            <div className="left">
-              <h2 className="font-bold">Terms & Conditions</h2>
-              <ul className="list-disc list-inside">
+          <div className="p-2 px-4 flex flex-col sm:flex-row justify-between items-end gap-4 footer-section flex-shrink-0">
+            <div className="left flex-shrink-0 w-full sm:w-auto">
+              <h2 className="font-bold text-xs sm:text-sm mb-1">Terms & Conditions</h2>
+              <ul className="list-disc list-inside text-xs leading-tight space-y-0.5">
                 <li>Cut Strips will not be refunded</li>
                 <li>Medicines can be returned within 5 days with bill.</li>
                 <li>Prices inclusive of all taxes.</li>
@@ -945,17 +948,17 @@ const Billing = () => {
               </ul>
             </div>
 
-            <div className="right border w-60">
-              <div className="sign border-b-2 h-3/7 p-1">
+            <div className="right border w-full sm:w-60 flex-shrink-0">
+              <div className="sign border-b-2 h-10 sm:h-12 p-1 flex items-start">
                 <p className="text-xs">AUTHORISED SIGNATORY</p>
               </div>
-              <div className="total p-1 text-xs flex justify-between">
-                <div>
+              <div className="total p-2 text-xs flex justify-between gap-4">
+                <div className="space-y-0.5">
                   <p>Subtotal:</p>
                   <p>Total GST({gstPercent}%):</p>
                   <p className="font-bold">GRAND TOTAL:</p>
                 </div>
-                <div>
+                <div className="space-y-0.5 text-right">
                   <p>₹{totals.subtotal}</p>
                   <p>₹{totals.totalGST}</p>
                   <p className="font-bold">₹{totals.grandTotal}</p>

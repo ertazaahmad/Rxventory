@@ -12,54 +12,63 @@ const Actionbar = ({
   const navigate = useNavigate();
 
   return (
-    <div className="flex justify-between items-center no-print">
+    <div className="no-print">
+      {/* Main Action Bar */}
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-4">
 
-      {/* LEFT BUTTONS */}
-      <div className="flex md:gap-4 gap-2">
-        <button
-          onClick={() => navigate("/inventory")}
-          className={`p-2 font-bold active:scale-95 text-white shadow-sm focus:ring-2 ${primarycolor}`}
-        >
-          INVENTORY
-        </button>
-
-        <button
-          onClick={() => navigate("/billing")}
-          className={`p-2 font-bold active:scale-95 text-white shadow-sm focus:ring-2 ${secondarycolor}`}
-        >
-          BILLING
-        </button>
-
-        {extraAction.map((action, index) => (
+        {/* LEFT BUTTONS */}
+        <div className="flex gap-2 sm:gap-3 md:gap-4 flex-wrap">
           <button
-            key={index}
-            onClick={action.onClick}
-            className={`${action.className} p-2 font-bold active:scale-95 text-white shadow-sm focus:ring-2`}
+            onClick={() => navigate("/inventory")}
+            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-bold 
+                        active:scale-95 text-white shadow-sm focus:ring-2 ${primarycolor} 
+                        flex-1 sm:flex-none min-w-[100px]`}
           >
-            {action.label}
+            INVENTORY
           </button>
-        ))}
-      </div>
 
-      {/* SEARCH INPUT - Only show if showSearch is true */}
-      {showSearch && (
-        <div className="relative w-64 text-xs md:text-lg ml-2">
-          <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="border px-3 py-2 rounded w-full"
-          />
+          <button
+            onClick={() => navigate("/billing")}
+            className={`px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base font-bold 
+                        active:scale-95 text-white shadow-sm focus:ring-2 ${secondarycolor} 
+                        flex-1 sm:flex-none min-w-[100px]`}
+          >
+            BILLING
+          </button>
 
-          <img
-            src="/search.svg"
-            alt="Search"
-            className="absolute right-3 top-1/2 -translate-y-1/2
-            md:w-5 md:h-5 w-3 h-3 opacity-60 pointer-events-none"
-          />
+          {extraAction.map((action, index) => (
+            <button
+              key={index}
+              onClick={action.onClick}
+              className={`${action.className} px-3 sm:px-4 py-2 text-xs sm:text-sm md:text-base 
+                          font-bold active:scale-95 text-white shadow-sm focus:ring-2`}
+            >
+              {action.label}
+            </button>
+          ))}
         </div>
-      )}
+
+        {/* SEARCH INPUT - Only show if showSearch is true */}
+        {showSearch && (
+          <div className="relative w-full sm:w-48 md:w-64">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="border px-3 py-2 rounded w-full text-sm sm:text-base 
+                         focus:outline-none focus:ring-2 focus:ring-blue-300"
+            />
+
+            <img
+              src="/search.svg"
+              alt="Search"
+              className="absolute right-3 top-1/2 -translate-y-1/2
+                        w-4 h-4 sm:w-5 sm:h-5 opacity-60 pointer-events-none"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -1,11 +1,12 @@
 const Footer = () => {
   return (
-    <footer className="w-full bg-gray-900 text-gray-400 py-2">
-      <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center text-sm">
+    <footer className="w-full bg-gray-900 text-gray-400 py-3 sm:py-4">
+      <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center 
+                      text-xs sm:text-sm gap-2 md:gap-0">
 
         {/* Left */}
         <p className="text-center md:text-left">
-        © Rxventory {new Date().getFullYear()}. All rights reserved
+          © Rxventory {new Date().getFullYear()}. All rights reserved
         </p>
 
         {/* Right */}

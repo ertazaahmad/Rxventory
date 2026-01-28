@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   collection,
   getDocs,
-  getDoc, // ✅ ADD THIS
+  getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -176,7 +176,7 @@ const Inventory = () => {
     }
 
     return (
-      <td className={`border p-2 ${!isEditing ? statusClass : ""}`}>
+      <td className={`border p-1 sm:p-2 text-xs sm:text-sm ${!isEditing ? statusClass : ""}`}>
         {isEditing ? (
           type === "select" ? (
             <select
@@ -184,7 +184,7 @@ const Inventory = () => {
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               onBlur={() => saveField(med, field)}
-              className="border px-1 py-1 w-full"
+              className="border px-1 py-1 w-full text-xs sm:text-sm"
             >
               {options.map((o) => (
                 <option key={o}>{o}</option>
@@ -200,12 +200,12 @@ const Inventory = () => {
               onKeyDown={(e) => {
                 if (e.key === "Enter") saveField(med, field);
               }}
-              className="border px-1 w-full"
+              className="border px-1 w-full text-xs sm:text-sm min-h-[44px] sm:min-h-0"
             />
           )
         ) : (
           <span
-            className="cursor-pointer font-medium"
+            className="cursor-pointer font-medium block min-h-[44px] sm:min-h-0 flex items-center"
             onClick={() => {
               setEditingCell({ id: med.id, field });
               setEditValue(value ?? "");
@@ -232,7 +232,7 @@ const getExpiryType = (expiry) => {
     (expiryDate - today) / (1000 * 60 * 60 * 24);
 
   if (diffDays < 0) return "expired";
-  if (diffDays <= 30) return "nearExpiry"; // you can change 30
+  if (diffDays <= 30) return "nearExpiry";
   return "valid";
 };
 
@@ -252,37 +252,40 @@ const filteredMedicines = medicines.filter((med) => {
     selectedStatus.includes("Expired") ||
     selectedStatus.includes("Near Expiry");
 
-  const matchesExpiry =
-    !expirySelected ||
-    (selectedStatus.includes("Expired") && expiryType === "expired") ||
-    (selectedStatus.includes("Near Expiry") && expiryType === "nearExpiry");
+  let matchesExpiry = true;
+  if (expirySelected) {
+    matchesExpiry =
+      (selectedStatus.includes("Expired") && expiryType === "expired") ||
+      (selectedStatus.includes("Near Expiry") && expiryType === "nearExpiry");
+  }
 
-  // STOCK STATUS (IGNORE when expiry filter is active)
-  const matchesStatus =
-    expirySelected ||
-    selectedStatus.length === 0 ||
-    selectedStatus.includes(med.status);
+  // STOCK STATUS
+  const stockSelected =
+    selectedStatus.includes("Out of Stock") ||
+    selectedStatus.includes("Low Stock");
 
-  return matchesSearch && matchesStatus && matchesExpiry;
+  let matchesStock = true;
+  if (stockSelected) {
+    matchesStock = selectedStatus.includes(med.status);
+  }
+
+  return matchesSearch && matchesExpiry && matchesStock;
 });
 
-
-
-
-
   return (
-    <div className="p-4">
+    <div className="p-2 sm:p-4">
+      {/* ================= PROFILE POPUP ================= */}
       {shouldShowProfilePopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl w-96">
-            <h2 className="text-xl font-bold mb-4">Complete Profile</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+          <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md sm:w-96">
+            <h2 className="text-lg sm:text-xl font-bold mb-4">Complete Your Profile</h2>
 
             <input
               type="text"
-              placeholder="Your Name"
+              placeholder="Your Full Name"
               value={profileName}
               onChange={(e) => setProfileName(e.target.value)}
-              className="w-full border p-2 mb-3"
+              className="w-full border p-2 mb-3 text-sm sm:text-base"
             />
 
             <input
@@ -290,12 +293,12 @@ const filteredMedicines = medicines.filter((med) => {
               placeholder="Clinic Name"
               value={profileClinic}
               onChange={(e) => setProfileClinic(e.target.value)}
-              className="w-full border p-2 mb-4"
+              className="w-full border p-2 mb-4 text-sm sm:text-base"
             />
 
             <button
               onClick={handleSaveProfile}
-              className="w-full bg-blue-600 text-white p-2 rounded"
+              className="w-full bg-blue-600 text-white p-2 rounded text-sm sm:text-base active:scale-95 transition"
             >
               Save & Continue
             </button>
@@ -304,7 +307,8 @@ const filteredMedicines = medicines.filter((med) => {
       )}
 
       {/* ================= INFO SECTION ================= */}
-      <div className="mb-4 bg-gray-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm font-medium">
+      <div className="mb-4 bg-gray-200 rounded-xl p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 
+                      gap-2 sm:gap-4 text-xs sm:text-sm font-medium">
         <div>
           <span className="text-gray-600">User ID:</span>{" "}
           <span className="font-semibold">{userData?.userId || "—"}</span>
@@ -350,7 +354,7 @@ const filteredMedicines = medicines.filter((med) => {
       />
 
       {/* ===== MAIN TABLE ===== */}
-      <div className="mt-4 overflow-x-auto" id="print-area">
+      <div className="mt-4 overflow-x-auto rounded-lg border border-gray-300" id="print-area">
         {/* ===== PRINT HEADER ===== */}
         <div className="print-header">
           <h1 className="print-title">RXVENTORY</h1>
@@ -359,9 +363,50 @@ const filteredMedicines = medicines.filter((med) => {
           </p>
         </div>
 
-        <table className="w-full border-collapse">
-          <thead className="bg-gray-200">
-            <tr>
+        {/* Mobile: Show simplified card view, Desktop: Show full table */}
+        <div className="block lg:hidden">
+          {/* MOBILE CARD VIEW */}
+          {filteredMedicines.map((med, i) => (
+            <div key={med.id} className="bg-white border-b p-3 hover:bg-gray-50">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex-1">
+                  <div className="font-bold text-sm">{i + 1}. {med.generic || "—"}</div>
+                  <div className="text-xs text-gray-600">{med.brand || "—"}</div>
+                </div>
+                <span className={`px-2 py-1 rounded text-xs ${
+                  med.status === "In Stock" 
+                    ? "bg-green-200 text-green-800" 
+                    : med.status === "Low Stock"
+                    ? "bg-yellow-200 text-yellow-800"
+                    : "bg-red-200 text-red-800"
+                }`}>
+                  {med.status}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div><span className="text-gray-600">Batch:</span> {med.batch || "—"}</div>
+                <div><span className="text-gray-600">Expiry:</span> {med.expiry || "—"}</div>
+                <div><span className="text-gray-600">Qty:</span> {med.qty}</div>
+                <div><span className="text-gray-600">Pack:</span> {med.pack}</div>
+                <div><span className="text-gray-600">Total:</span> {med.total}</div>
+                <div><span className="text-gray-600">Unit:</span> {med.unit}</div>
+              </div>
+              
+              <button
+                onClick={() => deleteMedicine(med.id)}
+                className="mt-2 bg-red-500 hover:bg-red-700 text-white px-3 py-1 rounded text-xs w-full active:scale-95 transition"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* DESKTOP TABLE VIEW */}
+        <table className="w-full border-collapse hidden lg:table">
+          <thead className="bg-gray-200 sticky top-0 z-10">
+            <tr className="text-xs lg:text-sm">
               <th className="border p-2" style={{width: "50px"}}>Sr</th>
               <th className="border p-2" style={{width: "200px"}}>Generic</th>
               <th className="border p-2">Brand</th>
@@ -396,7 +441,7 @@ const filteredMedicines = medicines.filter((med) => {
 
                   {isOpen && (
                     <div className="dropdown fixed w-33  mt-40  bg-white border p-2 rounded shadow-lg  z-10 flex flex-col space-y-1 items-start">
-                      <label>
+                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
                         <input
                           type="checkbox"
                           checked={selectedStatus.includes("Out of Stock")}
@@ -407,11 +452,12 @@ const filteredMedicines = medicines.filter((med) => {
                                 : [...prev, "Out of Stock"]
                             );
                           }}
+                          className="mr-2"
                         />
                         Out of Stock
                       </label>
 
-                      <label>
+                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
                         <input
                           type="checkbox"
                           checked={selectedStatus.includes("Low Stock")}
@@ -422,11 +468,12 @@ const filteredMedicines = medicines.filter((med) => {
                                 : [...prev, "Low Stock"]
                             );
                           }}
+                          className="mr-2"
                         />
                         Low Stock
                       </label>
 
-                      <label>
+                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
                          <input
                           type="checkbox"
                           checked={selectedStatus.includes("Near Expiry")}
@@ -437,11 +484,12 @@ const filteredMedicines = medicines.filter((med) => {
                                 : [...prev, "Near Expiry"]
                             );
                           }}
+                          className="mr-2"
                         />
                         Near Expiry
                       </label>
 
-                      <label>
+                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
                          <input
                           type="checkbox"
                           checked={selectedStatus.includes("Expired")}
@@ -452,6 +500,7 @@ const filteredMedicines = medicines.filter((med) => {
                                 : [...prev, "Expired"]
                             );
                           }}
+                          className="mr-2"
                         />
                         Expired
                       </label>
@@ -466,7 +515,7 @@ const filteredMedicines = medicines.filter((med) => {
           <tbody>
             {filteredMedicines.map((med, i) => (
               <tr key={med.id} className="hover:bg-gray-50">
-                <td className="border p-2">{i + 1}</td>
+                <td className="border p-2 text-xs lg:text-sm">{i + 1}</td>
 
                 <EditableCell med={med} field="generic" value={med.generic} />
                 <EditableCell med={med} field="brand" value={med.brand} />
@@ -490,7 +539,7 @@ const filteredMedicines = medicines.filter((med) => {
                   type="number"
                 />
 
-                <td className="border p-2 font-semibold">{med.total}</td>
+                <td className="border p-2 font-semibold text-xs lg:text-sm">{med.total}</td>
 
                 <EditableCell
                   med={med}
@@ -518,7 +567,7 @@ const filteredMedicines = medicines.filter((med) => {
                 <td className="border p-2 no-print">
                   <button
                     onClick={() => deleteMedicine(med.id)}
-                    className="bg-red-500 hover:bg-red-700 text-white px-2 py-1 rounded"
+                    className="bg-red-500 hover:bg-red-700 text-white px-2 py-1 rounded text-xs active:scale-95 transition"
                   >
                     Delete
                   </button>

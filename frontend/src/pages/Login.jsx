@@ -88,22 +88,29 @@ const user = result.user; // Firebase Auth user
 
 
   return (
-    <div className="md:min-h-[calc(100vh-100px)] min-h-[calc(100vh-120px)] w-full bg-[url('/src/assets/login1.svg')] bg-no-repeat bg-cover items-center flex justify-center">
+    <div className="min-h-[calc(100vh-64px)] sm:min-h-[calc(100vh-100px)] md:min-h-[calc(100vh-100px)] w-full 
+                    bg-[url('/src/assets/login1.svg')] bg-no-repeat bg-cover bg-center 
+                    items-center flex justify-center px-4 py-8">
       
    
         {/* Login card */}
-        <div className="flex flex-col w-80 items-center bg-blue-100 rounded-2xl p-12  shadow-xl hover:shadow-2xl transition">
-          <h1 className="text-4xl font-bold mt-2">Rxventory</h1>
-          <h1 className="text-2xl font-bold mt-2">Login</h1>
+        <div className="flex flex-col w-full max-w-sm sm:w-80 items-center 
+                        bg-blue-100 rounded-2xl p-8 sm:p-12 
+                        shadow-xl hover:shadow-2xl transition">
+          <h1 className="text-3xl sm:text-4xl font-bold mt-2">Rxventory</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mt-2">Login</h1>
 
           <button onClick={handleGoogleLogin} 
-          className="mt-12 mb-8 flex w-64 p-3 rounded-lg font-bold items-center justify-center bg-white border hover:bg-gray-50 transition hover:shadow-xl active:scale-95">
+          className="mt-8 sm:mt-12 mb-6 sm:mb-8 flex w-full sm:w-64 p-3 rounded-lg 
+                     font-bold items-center justify-center 
+                     bg-white border hover:bg-gray-50 transition 
+                     hover:shadow-xl active:scale-95">
             <img src="/google.svg" alt="Google" className="w-6 h-6" />
-            <span className="ml-8">Continue With Google</span>
+            <span className="ml-4 sm:ml-8 text-sm sm:text-base">Continue With Google</span>
           </button>
 
-          <h1 className="text-sm font-bold mt-4">Secure | Fast | Simple</h1>
-          <p className="text-xs text-gray-500 mt-4">
+          <h1 className="text-xs sm:text-sm font-bold mt-4">Secure | Fast | Simple</h1>
+          <p className="text-xs text-gray-500 mt-4 text-center">
             New here? Just continue with Google
           </p>
         </div>
