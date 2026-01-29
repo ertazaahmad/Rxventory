@@ -18,11 +18,21 @@ const { user, userDoc } = useAuth();
  const navigate = useNavigate();
 
 useEffect(() => {
-  if (userDoc?.plan === "pro") {
-    // Redirect + hard refresh
+  if (!userDoc) return;
+
+  const now = Date.now();
+
+  const isProActive =
+    userDoc.plan === "pro" &&
+    userDoc.proValidTill &&
+    userDoc.proValidTill.toMillis() > now;
+
+  if (isProActive) {
     window.location.replace("/inventory");
   }
-}, [userDoc?.plan]);
+}, [userDoc]);
+
+
 
 
 
@@ -31,6 +41,20 @@ const isFirstTime = userDoc?.hasPurchasedProBefore === false;
 
 
  const handleUpgrade = async () => {
+
+  const now = Date.now();
+
+const isProActive =
+  userDoc?.plan === "pro" &&
+  userDoc?.proValidTill &&
+  userDoc.proValidTill.toMillis() > now;
+
+if (isProActive) {
+  alert("You already have an active Pro subscription");
+  return;
+}
+
+
   try {
     const auth = getAuth();
     const user = auth.currentUser;
@@ -43,7 +67,8 @@ const isFirstTime = userDoc?.hasPurchasedProBefore === false;
     const idToken = await user.getIdToken();
 
     // 1️⃣ Create order from backend
-    const order = await createOrder(249, idToken);
+   const order = await createOrder(price, idToken);
+
 
     if (!order?.payment_session_id) {
       alert("Failed to initiate payment");

@@ -27,8 +27,16 @@ const Billing = () => {
   const [showUpgradePopup, setShowUpgradePopup] = useState(false);
   const [billStatus, setBillStatus] = useState("DRAFT");
   const navigate = useNavigate();
-
+  const [typingTimeout, setTypingTimeout] = useState(null);
   const [inventory, setInventory] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [activeRow, setActiveRow] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({
+    top: 0,
+    left: 0,
+    width: 0,
+  });
+  const [highlightIndex, setHighlightIndex] = useState(-1);
 
   const emptyRow = {
     generic: "",
@@ -73,7 +81,6 @@ const Billing = () => {
       year: "numeric",
     });
   };
-
 
   const [invoiceMeta, setInvoiceMeta] = useState({
     invoiceNo: "",
@@ -203,6 +210,10 @@ const Billing = () => {
 
     fetchUserData();
   }, [user]);
+
+  useEffect(() => {
+    setHighlightIndex(-1);
+  }, [suggestions]);
 
   // Update pharmacy fields when userData changes
   useEffect(() => {
@@ -469,9 +480,32 @@ const Billing = () => {
             "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
         };
 
+  const fillMedicineRow = (index, medicine) => {
+    const updated = [...billItems];
+
+    updated[index] = {
+      ...updated[index],
+      medicineId: medicine.id,
+      generic: medicine.generic,
+      brand: medicine.brand || "",
+      batch: medicine.batch || "",
+      expiry: medicine.expiry || "",
+      packSize: medicine.pack || 1,
+      rate: medicine.rate || 0,
+      mrp: medicine.rate || 0,
+      gstPercent: 12,
+      status: medicine.status || "In Stock",
+      inventoryUnit: medicine.unit || "Tablet",
+      unit: medicine.unit === "Tablet" ? "TABLET" : medicine.unit.toUpperCase(),
+      qty: "",
+    };
+
+    setBillItems(updated);
+  };
+
   return (
     <div>
-     <style>{`
+      <style>{`
 /* ================= PRINT ONLY ================= */
 @media print {
 
@@ -585,7 +619,6 @@ const Billing = () => {
 
 `}</style>
 
-
       {!loadingUserData && showPopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md sm:w-96">
@@ -654,6 +687,37 @@ const Billing = () => {
           id="print-area"
           className="border m-1 sm:m-2 mb-1 min-h-[calc(100vh-14rem)] sm:h-[calc(100vh-11rem)] flex flex-col"
         >
+          {activeRow !== null && suggestions.length > 0 && (
+            <div
+              className="fixed z-[9999] bg-white border shadow-lg max-h-40 overflow-y-auto text-xs"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left,
+                width: dropdownPosition.width,
+              }}
+            >
+              {suggestions.map((med, i) => (
+               <div
+  key={med.id}
+  onClick={() => {
+    fillMedicineRow(activeRow, med);
+    setSuggestions([]);
+    setActiveRow(null);
+    setHighlightIndex(-1);
+  }}
+  className={`px-2 py-1 cursor-pointer ${
+    i === highlightIndex
+      ? "bg-blue-500 text-white"
+      : "hover:bg-blue-100"
+  }`}
+>
+  {med.generic}
+</div>
+
+              ))}
+            </div>
+          )}
+
           <div className="pl-2 sm:pl-4 border-b border-black py-3 sm:py-0 sm:h-24 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-16 header-section shrink-0">
             <div className="flex flex-col gap-1">
               <h3 className="text-blue-600 font-extrabold text-sm sm:text-base">
@@ -682,9 +746,9 @@ const Billing = () => {
                   className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1 no-print"
                 />
                 {/* Print */}
-<span className="hidden print:inline">
-  {patient.name || "—"}
-</span>
+                <span className="hidden print:inline">
+                  {patient.name || "—"}
+                </span>
               </p>
               <p className="text-xs sm:text-sm">
                 <span className="font-semibold">Address:</span>{" "}
@@ -698,9 +762,9 @@ const Billing = () => {
                   className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1 no-print"
                 />
                 {/* Print */}
-<span className="hidden print:inline">
-  {patient.address || "—"}
-</span>
+                <span className="hidden print:inline">
+                  {patient.address || "—"}
+                </span>
               </p>
               <p className="text-xs sm:text-sm">
                 <span className="font-semibold">Doctor:</span>{" "}
@@ -714,9 +778,9 @@ const Billing = () => {
                   className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1 no-print"
                 />
                 {/* Print */}
-<span className="hidden print:inline">
-  {patient.doctor || "—"}
-</span>
+                <span className="hidden print:inline">
+                  {patient.doctor || "—"}
+                </span>
               </p>
             </div>
             <div className="flex flex-col gap-2">
@@ -737,30 +801,26 @@ const Billing = () => {
 
           <div className="m-1 sm:m-2 flex-1 overflow-y-auto overflow-x-auto scrollbar-hide table-container">
             <table className="w-full text-left divide-y divide-gray-400">
-                <colgroup>
-    <col style={{ width: "3%" }} />   {/* Sr */}
-    <col style={{ width: "16%" }} />  {/* Generic Name (WIDE) */}
-    <col style={{ width: "8%" }} />   {/* Brand */}
-    <col style={{ width: "8%" }} />   {/* Batch */}
-    <col style={{ width: "7%" }} />   {/* Expiry */}
-    <col style={{ width: "6%" }} />   {/* Qty */}
-    <col style={{ width: "6%" }} />   {/* Unit (SMALLER) */}
-    <col style={{ width: "6%" }} />   {/* Pack Size (SMALLER) */}
-    <col style={{ width: "6%" }} />   {/* Rate (SMALLER) */}
-    <col style={{ width: "7%" }} />   {/* MRP */}
-    <col style={{ width: "6%" }} />   {/* GST */}
-    <col style={{ width: "7%" }} />   {/* Amount */}
-    <col style={{ width: "%" }} />   {/* Status */}
-    <col style={{ width: "%" }} />   {/* Actions */}
-  </colgroup>
+              <colgroup>
+                <col style={{ width: "3%" }} /> {/* Sr */}
+                <col style={{ width: "16%" }} /> {/* Generic Name (WIDE) */}
+                <col style={{ width: "8%" }} /> {/* Brand */}
+                <col style={{ width: "8%" }} /> {/* Batch */}
+                <col style={{ width: "7%" }} /> {/* Expiry */}
+                <col style={{ width: "6%" }} /> {/* Qty */}
+                <col style={{ width: "6%" }} /> {/* Unit (SMALLER) */}
+                <col style={{ width: "6%" }} /> {/* Pack Size (SMALLER) */}
+                <col style={{ width: "6%" }} /> {/* Rate (SMALLER) */}
+                <col style={{ width: "7%" }} /> {/* MRP */}
+                <col style={{ width: "6%" }} /> {/* GST */}
+                <col style={{ width: "7%" }} /> {/* Amount */}
+                <col style={{ width: "%" }} /> {/* Status */}
+                <col style={{ width: "%" }} /> {/* Actions */}
+              </colgroup>
               <thead className="bg-gray-300 sticky top-0 z-10 text-center">
                 <tr className="text-xs sm:text-sm font-semibold">
-                  <th className="px-1 sm:px-2 py-1">
-                    Sr.
-                  </th>
-                  <th className="px-1 sm:px-2 py-1">
-                    Generic Name
-                  </th>
+                  <th className="px-1 sm:px-2 py-1">Sr.</th>
+                  <th className="px-1 sm:px-2 py-1">Generic Name</th>
                   <th className="px-1 sm:px-2 py-1">Brand</th>
                   <th className="px-1 sm:px-2 py-1">Batch No.</th>
                   <th className="px-1 sm:px-2 py-1">Expiry</th>
@@ -803,7 +863,7 @@ const Billing = () => {
                     </td>
 
                     {/* Generic Name - FIXED */}
-                    <td className="p-1 border">
+                    <td className="p-1 border relative">
                       <input
                         type="text"
                         value={item.generic || ""}
@@ -812,46 +872,86 @@ const Billing = () => {
                           const value = e.target.value;
                           const updated = [...billItems];
 
-                          // 1️⃣ Always allow typing freely
+                          // 1️⃣ Always allow typing
                           updated[index] = {
                             ...updated[index],
                             generic: value,
                           };
+                          setBillItems(updated);
+                          setActiveRow(index);
 
-                          // 2️⃣ Exact match ONLY (no partial match)
-                          const match = inventory.find(
-                            (m) =>
-                              m.generic &&
-                              m.generic.toLowerCase().trim() ===
-                                value.toLowerCase().trim(),
-                          );
+                          // 👇 GET INPUT POSITION
+                          const rect = e.target.getBoundingClientRect();
+                          setDropdownPosition({
+                            top: rect.bottom + window.scrollY,
+                            left: rect.left + window.scrollX,
+                            width: rect.width,
+                          });
 
-                          // 3️⃣ Auto-fill ONLY on exact match
-                          if (match) {
-                            updated[index] = {
-                              ...updated[index],
-                              medicineId: match.id,
-                              generic: match.generic,
-                              brand: match.brand || "",
-                              batch: match.batch || "",
-                              expiry: match.expiry || "",
-                              packSize: match.pack || 0,
-                              rate: match.rate || 0, // strip price
-                              mrp: match.rate || 0, // store strip MRP for reference
-                              gstPercent: 12,
-                              originalStock: match.qty || 0,
-                              status: match.status || "In Stock",
-                              inventoryUnit: match.unit || "Tablet",
-                              unit:
-                                match.unit === "Tablet"
-                                  ? "TABLET"
-                                  : match.unit.toUpperCase(),
-                              qty: updated[index].qty || 0, // preserve qty
-                            };
+                          // 2️⃣ Show suggestions (partial match)
+                          if (value.trim()) {
+                            const matches = inventory.filter((m) =>
+                              m.generic
+                                ?.toLowerCase()
+                                .includes(value.toLowerCase()),
+                            );
+                            setSuggestions(matches.slice(0, 5));
+                          } else {
+                            setSuggestions([]);
                           }
 
-                          setBillItems(updated);
+                          // 3️⃣ Delayed exact match auto-fill (your previous logic, safe)
+                          if (typingTimeout) clearTimeout(typingTimeout);
+
+                          const timeout = setTimeout(() => {
+                            const exactMatch = inventory.find(
+                              (m) =>
+                                m.generic &&
+                                m.generic.toLowerCase() === value.toLowerCase(),
+                            );
+
+                            if (exactMatch) {
+                              fillMedicineRow(index, exactMatch);
+                              setSuggestions([]);
+                            }
+                          }, 400);
+
+                          setTypingTimeout(timeout);
                         }}
+                        onKeyDown={(e) => {
+  if (!suggestions.length) return;
+
+  // ⬇ Arrow Down
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setHighlightIndex((prev) =>
+      prev < suggestions.length - 1 ? prev + 1 : 0
+    );
+  }
+
+  // ⬆ Arrow Up
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setHighlightIndex((prev) =>
+      prev > 0 ? prev - 1 : suggestions.length - 1
+    );
+  }
+
+  // ⏎ Enter → select
+  if (e.key === "Enter" && highlightIndex >= 0) {
+    e.preventDefault();
+    fillMedicineRow(activeRow, suggestions[highlightIndex]);
+    setSuggestions([]);
+    setActiveRow(null);
+  }
+
+  // ⎋ Escape → close dropdown
+  if (e.key === "Escape") {
+    setSuggestions([]);
+    setActiveRow(null);
+  }
+}}
+
                         className="w-full px-2 "
                         placeholder="Type generic name..."
                         autoComplete="off"
@@ -886,59 +986,57 @@ const Billing = () => {
                         value={item.qty}
                         min="0"
                         disabled={isFinalized}
-       onChange={(e) => {
-  let enteredQty = Number(e.target.value) || 0;
-  if (enteredQty < 0) return;
+                        onChange={(e) => {
+                          let enteredQty = Number(e.target.value) || 0;
+                          if (enteredQty < 0) return;
 
-  const updated = [...billItems];
-  const currentItem = updated[index];
+                          const updated = [...billItems];
+                          const currentItem = updated[index];
 
-  const unit = currentItem.unit || "TABLET";
-  const packSize = Number(currentItem.packSize) || 1;
+                          const unit = currentItem.unit || "TABLET";
+                          const packSize = Number(currentItem.packSize) || 1;
 
-  // 🔍 FIND INVENTORY ITEM (SAFE)
-  const inventoryItem = inventory.find(
-    (m) => m.id === currentItem.medicineId
-  );
+                          // 🔍 FIND INVENTORY ITEM (SAFE)
+                          const inventoryItem = inventory.find(
+                            (m) => m.id === currentItem.medicineId,
+                          );
 
-  // 🔒 CALCULATE MAX ALLOWED QTY
-  let maxAllowedQty = 0;
+                          // 🔒 CALCULATE MAX ALLOWED QTY
+                          let maxAllowedQty = 0;
 
-  if (inventoryItem) {
-    if (unit === "TABLET") {
-      maxAllowedQty = Number(inventoryItem.total || 0);
-    } else {
-      maxAllowedQty = Number(inventoryItem.qty || 0);
-    }
-  }
+                          if (inventoryItem) {
+                            if (unit === "TABLET") {
+                              maxAllowedQty = Number(inventoryItem.total || 0);
+                            } else {
+                              maxAllowedQty = Number(inventoryItem.qty || 0);
+                            }
+                          }
 
-  // ❌ BLOCK OVERSELLING
-  if (enteredQty > maxAllowedQty) {
-    enteredQty = maxAllowedQty;
-  }
+                          // ❌ BLOCK OVERSELLING
+                          if (enteredQty > maxAllowedQty) {
+                            enteredQty = maxAllowedQty;
+                          }
 
-  currentItem.qty = enteredQty;
+                          currentItem.qty = enteredQty;
 
-  // 🔢 tablets sold
-  const tabletsSold =
-    unit === "STRIP"
-      ? enteredQty * packSize
-      : enteredQty;
+                          // 🔢 tablets sold
+                          const tabletsSold =
+                            unit === "STRIP"
+                              ? enteredQty * packSize
+                              : enteredQty;
 
-  // 💰 pricing
-  const stripRate = Number(currentItem.rate || 0);
-  const tabletRate = stripRate / packSize;
+                          // 💰 pricing
+                          const stripRate = Number(currentItem.rate || 0);
+                          const tabletRate = stripRate / packSize;
 
-  const baseAmount = tabletsSold * tabletRate;
-  const gstAmount = (baseAmount * gstPercent) / 100;
+                          const baseAmount = tabletsSold * tabletRate;
+                          const gstAmount = (baseAmount * gstPercent) / 100;
 
-  currentItem.gstAmount = gstAmount;
-  currentItem.amount = baseAmount + gstAmount;
+                          currentItem.gstAmount = gstAmount;
+                          currentItem.amount = baseAmount + gstAmount;
 
-  setBillItems(updated);
-}}
-
-
+                          setBillItems(updated);
+                        }}
                         className="w-full text-right px-2"
                         autoComplete="off"
                       />

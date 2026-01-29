@@ -72,15 +72,10 @@ function verifyCashfreeSignature(rawBody, timestamp, signature) {
 ========================= */
 app.post("/create-order", async (req, res) => {
   try {
-    const { amount, idToken } = req.body;
+    const { idToken } = req.body;
 
-    if (!amount || !idToken) {
-      return res.status(400).json({ error: "Amount & token required" });
-    }
-
-    const parsedAmount = parseFloat(amount);
-    if (Number.isNaN(parsedAmount) || parsedAmount < 1) {
-      return res.status(400).json({ error: "Invalid amount" });
+    if (!idToken) {
+      return res.status(400).json({ error: "Token required" });
     }
 
     const decoded = await verifyFirebaseToken(idToken);
@@ -88,29 +83,55 @@ app.post("/create-order", async (req, res) => {
       return res.status(401).json({ error: "Invalid Firebase token" });
     }
 
+    const userRef = admin.firestore().collection("users").doc(decoded.uid);
+    const userSnap = await userRef.get();
+    const userData = userSnap.exists ? userSnap.data() : {};
+
+    const now = Date.now();
+
+    // 🔒 Block active Pro users
+    const isProActive =
+      userData.plan === "pro" &&
+      userData.proValidTill &&
+      userData.proValidTill.toDate().getTime() > now;
+
+    if (isProActive) {
+      return res.status(400).json({
+        error: "Active Pro subscription already exists",
+      });
+    }
+
+    // 💰 Decide price on backend ONLY
+    const finalAmount = userData.hasPurchasedProBefore ? 349 : 249;
+
     const orderId = generateOrderId();
 
+    // Save order
     await admin.firestore().collection("orders").doc(orderId).set({
       uid: decoded.uid,
-      amount: parsedAmount,
+      amount: finalAmount,
       status: "PENDING",
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     const orderPayload = {
       order_id: orderId,
-      order_amount: parsedAmount,
+      order_amount: finalAmount,
       order_currency: "INR",
       customer_details: {
         customer_id: decoded.uid,
-        customer_email: decoded.email,
+        customer_email: decoded.email || "no-email@rxventory.com",
         customer_phone: "9999999999",
       },
-      order_meta: {
-        return_url: "https://your-app.com/payment-success",
-        notify_url:
-          "https://nonpunctuating-brittney-overcool.ngrok-free.dev/cashfree-webhook",
-      },
+   order_tags: {
+  uid: decoded.uid,
+},
+order_meta: {
+  return_url: "https://your-app.com/payment-success",
+  notify_url:
+    "https://nonpunctuating-brittney-overcool.ngrok-free.dev/cashfree-webhook",
+},
+
     };
 
     const response = await axios.post(
@@ -136,6 +157,7 @@ app.post("/create-order", async (req, res) => {
   }
 });
 
+
 /* =========================
    CASHFREE WEBHOOK
 ========================= */
@@ -143,7 +165,6 @@ app.post("/cashfree-webhook", async (req, res) => {
   try {
     const signature = req.headers["x-webhook-signature"];
     const timestamp = req.headers["x-webhook-timestamp"];
-
     const rawBody = req.body.toString("utf8");
 
     if (!verifyCashfreeSignature(rawBody, timestamp, signature)) {
@@ -156,44 +177,45 @@ app.post("/cashfree-webhook", async (req, res) => {
     const body = JSON.parse(rawBody);
 
     const paymentStatus = body?.data?.payment?.payment_status;
-    const customerId = body?.data?.customer_details?.customer_id;
+    const uid = body?.data?.order?.order_tags?.uid;
     const paymentId = body?.data?.payment?.cf_payment_id;
 
+    if (!uid) {
+      console.log("❌ Webhook missing uid");
+      return res.status(400).send("Missing uid");
+    }
 
-    if (paymentStatus !== "SUCCESS" || !customerId) {
+    if (paymentStatus !== "SUCCESS") {
       return res.status(200).json({ ignored: true });
     }
 
-
+    // Prevent duplicate webhook
     const paymentRef = admin.firestore().collection("payments").doc(paymentId);
-const existing = await paymentRef.get();
+    const existing = await paymentRef.get();
 
-if (existing.exists) {
-  console.log("⚠️ Duplicate webhook ignored:", paymentId);
-  return res.status(200).json({ duplicate: true });
-}
+    if (existing.exists) {
+      console.log("⚠️ Duplicate webhook ignored:", paymentId);
+      return res.status(200).json({ duplicate: true });
+    }
 
-await paymentRef.set({
-  customerId,
-  orderId: body.data.order.order_id,
-  amount: body.data.payment.payment_amount,
-  createdAt: admin.firestore.FieldValue.serverTimestamp(),
-});
-
+    await paymentRef.set({
+      uid,
+      orderId: body.data.order.order_id,
+      amount: body.data.payment.payment_amount,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
 
     const proValidTill = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000
     );
 
-
-
-    await admin.firestore().collection("users").doc(customerId).update({
+    await admin.firestore().collection("users").doc(uid).update({
       plan: "pro",
       proValidTill,
       hasPurchasedProBefore: true,
     });
 
-    console.log("🎉 USER UPGRADED TO PRO:", customerId);
+    console.log("🎉 USER UPGRADED TO PRO:", uid);
 
     res.status(200).json({ success: true });
   } catch (err) {
@@ -201,6 +223,7 @@ await paymentRef.set({
     res.status(500).json({ error: "Webhook failed" });
   }
 });
+
 
 /* =========================
    HEALTH CHECK
