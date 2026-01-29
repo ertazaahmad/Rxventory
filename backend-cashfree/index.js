@@ -1,164 +1,217 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const axios = require('axios');
-const admin = require('firebase-admin');
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const axios = require("axios");
+const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-// Middleware
+/* =========================
+   MIDDLEWARE
+========================= */
 app.use(cors());
-app.use(express.json());
 
-// Initialize Firebase Admin (only if service account is provided)
+// ✅ JSON for normal APIs
+app.use("/create-order", express.json());
+
+// ✅ RAW body ONLY for webhook
+app.use(
+  "/cashfree-webhook",
+  express.raw({ type: "application/json" })
+);
+
+/* =========================
+   FIREBASE ADMIN INIT
+========================= */
 if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
   const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+    credential: admin.credential.cert(serviceAccount),
   });
-  console.log("Firebase Admin initialized");
+  console.log("✅ Firebase Admin initialized");
 } else {
-  console.log("Firebase Admin NOT initialized (dev mode)");
+  console.log("⚠️ Firebase Admin NOT initialized");
 }
 
-// Cashfree Config
+/* =========================
+   CASHFREE CONFIG
+========================= */
 const CASHFREE_APP_ID = process.env.CASHFREE_APP_ID;
 const CASHFREE_SECRET_KEY = process.env.CASHFREE_SECRET_KEY;
 const CASHFREE_API_URL = process.env.CASHFREE_API_URL;
 
-// Helper: Verify Firebase ID Token
+/* =========================
+   HELPERS
+========================= */
 async function verifyFirebaseToken(idToken) {
   try {
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    return decodedToken;
-  } catch (error) {
+    return await admin.auth().verifyIdToken(idToken);
+  } catch {
     return null;
   }
 }
 
-// Helper: Generate unique order ID
 function generateOrderId() {
-  return 'order_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+  return `order_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-// Route: Create Order
-app.post('/create-order', async (req, res) => {
+// ✅ CORRECT signature verification
+function verifyCashfreeSignature(rawBody, timestamp, signature) {
+  const expectedSignature = crypto
+    .createHmac("sha256", CASHFREE_SECRET_KEY)
+    .update(timestamp + rawBody)
+    .digest("base64");
+
+  return expectedSignature === signature;
+}
+
+/* =========================
+   CREATE ORDER
+========================= */
+app.post("/create-order", async (req, res) => {
   try {
     const { amount, idToken } = req.body;
 
-    // Validate input
     if (!amount || !idToken) {
-      return res.status(400).json({ error: 'Amount and idToken are required' });
+      return res.status(400).json({ error: "Amount & token required" });
     }
 
-    if (amount < 1) {
-      return res.status(400).json({ error: 'Amount must be at least 1' });
+    const parsedAmount = parseFloat(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount < 1) {
+      return res.status(400).json({ error: "Invalid amount" });
     }
 
-    // Verify Firebase token
-    const decodedToken = await verifyFirebaseToken(idToken);
-    if (!decodedToken) {
-      return res.status(401).json({ error: 'Invalid or expired Firebase token' });
+    const decoded = await verifyFirebaseToken(idToken);
+    if (!decoded) {
+      return res.status(401).json({ error: "Invalid Firebase token" });
     }
 
-    const userId = decodedToken.uid;
     const orderId = generateOrderId();
 
-    // Create Cashfree order
-    const orderData = {
+    await admin.firestore().collection("orders").doc(orderId).set({
+      uid: decoded.uid,
+      amount: parsedAmount,
+      status: "PENDING",
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const orderPayload = {
       order_id: orderId,
-      order_amount: parseFloat(amount),
-      order_currency: 'INR',
+      order_amount: parsedAmount,
+      order_currency: "INR",
       customer_details: {
-        customer_id: userId,
-        customer_phone: '9999999999',
-        customer_email: decodedToken.email || 'user@example.com'
+        customer_id: decoded.uid,
+        customer_email: decoded.email,
+        customer_phone: "9999999999",
       },
       order_meta: {
-        return_url: 'https://your-app.com/payment-success',
-        notify_url: 'https://your-backend.com/webhook'
-      }
+        return_url: "https://your-app.com/payment-success",
+        notify_url:
+          "https://nonpunctuating-brittney-overcool.ngrok-free.dev/cashfree-webhook",
+      },
     };
 
     const response = await axios.post(
       `${CASHFREE_API_URL}/orders`,
-      orderData,
+      orderPayload,
       {
         headers: {
-          'Content-Type': 'application/json',
-          'x-client-id': CASHFREE_APP_ID,
-          'x-client-secret': CASHFREE_SECRET_KEY,
-          'x-api-version': '2023-08-01'
-        }
+          "x-client-id": CASHFREE_APP_ID,
+          "x-client-secret": CASHFREE_SECRET_KEY,
+          "x-api-version": "2022-09-01",
+        },
       }
     );
-
-    const { order_id, payment_session_id } = response.data;
 
     res.json({
       success: true,
-      order_id,
-      payment_session_id
+      order_id: response.data.order_id,
+      payment_session_id: response.data.payment_session_id,
     });
-
-  } catch (error) {
-    console.error('Create order error:', error.response?.data || error.message);
-    res.status(500).json({ 
-      error: 'Failed to create order',
-      details: error.response?.data || error.message
-    });
+  } catch (err) {
+    console.error("Create order error:", err.response?.data || err.message);
+    res.status(500).json({ error: "Create order failed" });
   }
 });
 
-// Route: Check Payment Status
-app.get('/check-status', async (req, res) => {
+/* =========================
+   CASHFREE WEBHOOK
+========================= */
+app.post("/cashfree-webhook", async (req, res) => {
   try {
-    const { order_id } = req.query;
+    const signature = req.headers["x-webhook-signature"];
+    const timestamp = req.headers["x-webhook-timestamp"];
 
-    if (!order_id) {
-      return res.status(400).json({ error: 'order_id is required' });
+    const rawBody = req.body.toString("utf8");
+
+    if (!verifyCashfreeSignature(rawBody, timestamp, signature)) {
+      console.log("❌ Invalid Cashfree signature");
+      return res.status(401).send("Invalid signature");
     }
 
-    // Fetch order status from Cashfree
-    const response = await axios.get(
-      `${CASHFREE_API_URL}/orders/${order_id}`,
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'x-client-id': CASHFREE_APP_ID,
-          'x-client-secret': CASHFREE_SECRET_KEY,
-          'x-api-version': '2023-08-01'
-        }
-      }
+    console.log("✅ Cashfree signature verified");
+
+    const body = JSON.parse(rawBody);
+
+    const paymentStatus = body?.data?.payment?.payment_status;
+    const customerId = body?.data?.customer_details?.customer_id;
+    const paymentId = body?.data?.payment?.cf_payment_id;
+
+
+    if (paymentStatus !== "SUCCESS" || !customerId) {
+      return res.status(200).json({ ignored: true });
+    }
+
+
+    const paymentRef = admin.firestore().collection("payments").doc(paymentId);
+const existing = await paymentRef.get();
+
+if (existing.exists) {
+  console.log("⚠️ Duplicate webhook ignored:", paymentId);
+  return res.status(200).json({ duplicate: true });
+}
+
+await paymentRef.set({
+  customerId,
+  orderId: body.data.order.order_id,
+  amount: body.data.payment.payment_amount,
+  createdAt: admin.firestore.FieldValue.serverTimestamp(),
+});
+
+
+    const proValidTill = new Date(
+      Date.now() + 30 * 24 * 60 * 60 * 1000
     );
 
-    const orderStatus = response.data.order_status;
-    
-    // Map Cashfree status to simple response
-    const isPaid = orderStatus === 'PAID';
-    
-    res.json({
-      order_id,
-      status: isPaid ? 'PAID' : 'NOT_PAID',
-      raw_status: orderStatus
+
+
+    await admin.firestore().collection("users").doc(customerId).update({
+      plan: "pro",
+      proValidTill,
+      hasPurchasedProBefore: true,
     });
 
-  } catch (error) {
-    console.error('Check status error:', error.response?.data || error.message);
-    res.status(500).json({ 
-      error: 'Failed to check payment status',
-      details: error.response?.data || error.message
-    });
+    console.log("🎉 USER UPGRADED TO PRO:", customerId);
+
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("❌ Webhook error:", err);
+    res.status(500).json({ error: "Webhook failed" });
   }
 });
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({ message: 'Cashfree payment backend is running' });
+/* =========================
+   HEALTH CHECK
+========================= */
+app.get("/", (req, res) => {
+  res.json({ message: "Cashfree backend running ✅" });
 });
 
-// Start server
+/* =========================
+   START SERVER
+========================= */
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

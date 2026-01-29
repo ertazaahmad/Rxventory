@@ -2,10 +2,10 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import {
   doc,
-  getDoc,
   setDoc,
   updateDoc,
   serverTimestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
@@ -14,56 +14,74 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [userDoc, setUserDoc] = useState(null);
-
   const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-  const unsub = onAuthStateChanged(auth, async (currentUser) => {
-    if (currentUser) {
-      const userRef = doc(db, "users", currentUser.uid);
-      const snap = await getDoc(userRef);
+  useEffect(() => {
+    let unsubUser = null;
 
-      if (!snap.exists()) {
-        // ✅ FIRST TIME USER
-        const newUserData = {
-          uid: currentUser.uid,
-          email: currentUser.email || "",
-          name: currentUser.displayName || "",
-          clinicName: "",
-          userId: "",
-          role: "",
-          plan: "free",
-          hasPurchasedProBefore: false,
-          createdAt: serverTimestamp(),
-          lastLogin: serverTimestamp(),
-        };
-
-        await setDoc(userRef, newUserData);
-        setUserDoc(newUserData);
-      } else {
-        // ✅ EXISTING USER
-        await updateDoc(userRef, {
-          lastLogin: serverTimestamp(),
-        });
-
-        setUserDoc(snap.data());
+    const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        setUser(null);
+        setUserDoc(null);
+        setLoading(false);
+        if (unsubUser) unsubUser();
+        return;
       }
 
       setUser(currentUser);
-    } else {
-      setUser(null);
-      setUserDoc(null);
-    }
 
-    setLoading(false);
-  });
+      const userRef = doc(db, "users", currentUser.uid);
 
-  return unsub;
-}, []);
+      unsubUser = onSnapshot(userRef, async (snap) => {
+        if (!snap.exists()) {
+          const newUserData = {
+            uid: currentUser.uid,
+            email: currentUser.email || "",
+            name: currentUser.displayName || "",
+            clinicName: "",
+            userId: "",
+            role: "",
+            plan: "free",
+            hasPurchasedProBefore: false,
+            proValidTill: null,
+            createdAt: serverTimestamp(),
+            lastLogin: serverTimestamp(),
+          };
 
+          await setDoc(userRef, newUserData);
+          setUserDoc(newUserData);
+        } else {
+          const data = snap.data();
+
+          // Auto downgrade
+          if (
+            data.plan === "pro" &&
+            data.proValidTill &&
+            data.proValidTill.toMillis() < Date.now()
+          ) {
+            await updateDoc(userRef, {
+              plan: "free",
+              proValidTill: null,
+            });
+            setUserDoc({ ...data, plan: "free", proValidTill: null });
+          } else {
+            setUserDoc(data);
+          }
+        }
+
+        setLoading(false);
+      });
+    });
+
+    // ✅ Proper cleanup
+    return () => {
+      unsubAuth();
+      if (unsubUser) unsubUser();
+    };
+  }, []);
 
   return (
-  <AuthContext.Provider value={{ user, userDoc }}>
+    <AuthContext.Provider value={{ user, userDoc }}>
       {!loading && children}
     </AuthContext.Provider>
   );

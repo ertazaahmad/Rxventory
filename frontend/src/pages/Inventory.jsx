@@ -12,9 +12,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import Actionbar from "../components/Actionbar";
+import { useNavigate } from "react-router-dom";
 
 const Inventory = () => {
-  const { user } = useAuth();
+  const { user, userDoc } = useAuth();
   const [medicines, setMedicines] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -24,6 +25,8 @@ const Inventory = () => {
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState([]);
+  const [showUpgradePopup, setShowUpgradePopup] = useState(false);
+  const navigate = useNavigate();
 
   /* ================= PROFILE POPUP ================= */
   const handleSaveProfile = async () => {
@@ -89,30 +92,52 @@ const Inventory = () => {
   }, [user]);
 
 
+// ✅ SINGLE SOURCE OF TRUTH FOR INVENTORY CALCULATION
+const calculateInventory = (qty, pack, minStock) => {
+  const total = qty * pack;
+
+  let status = "In Stock";
+  if (qty === 0) {
+    status = "Out of Stock";
+  } else if (qty <= minStock) {
+    status = "Low Stock";
+  }
+
+  return { total, status };
+};
+
+
 
   /* ================= ADD EMPTY MEDICINE ================= */
   const addEmptyMedicine = async () => {
-    if (!user) return;
+  if (!user) return;
 
-    const ref = collection(db, "users", user.uid, "medicines");
+  // 🔒 FREE PLAN LIMIT
+  if (userDoc?.plan === "free" && medicines.length >= 10) {
+    setShowUpgradePopup(true);
+    return;
+  }
 
-    await addDoc(ref, {
-      generic: "",
-      brand: "",
-      batch: "",
-      expiry: "",
-      qty: 0,
-      pack: 1,
-      total: 0,
-      unit: "Tablet",
-      rate: 0,
-      minStock: 0,
-      status: "In Stock",
-      createdAt: serverTimestamp(),
-    });
+  const ref = collection(db, "users", user.uid, "medicines");
 
-    fetchMedicines();
-  };
+  await addDoc(ref, {
+    generic: "",
+    brand: "",
+    batch: "",
+    expiry: "",
+    qty: 0,
+    pack: 1,
+    total: 0,
+    unit: "Tablet",
+    rate: 0,
+    minStock: 0,
+    status: "In Stock",
+    createdAt: serverTimestamp(),
+  });
+
+  fetchMedicines();
+};
+
 
   /* ================= SAVE INLINE EDIT ================= */
   const saveField = async (med, field) => {
@@ -131,14 +156,11 @@ const Inventory = () => {
     const pack = field === "pack" ? Number(value) : med.pack;
     const minStock = field === "minStock" ? Number(value) : med.minStock;
 
-    updated.total = qty * pack;
-    if (qty === 0) {
-      updated.status = "Out of Stock";
-    } else if (qty <= minStock) {
-      updated.status = "Low Stock";
-    } else {
-      updated.status = "In Stock";
-    }
+    const { total, status } = calculateInventory(qty, pack, minStock);
+
+updated.total = total;
+updated.status = status;
+
 
     await updateDoc(ref, updated);
 
@@ -333,12 +355,27 @@ const filteredMedicines = medicines.filter((med) => {
           </span>
         </div>
 
-        <div>
-          <span className="text-gray-600">Subscription:</span>{" "}
-          <span className="font-semibold text-red-900">
-            {userData?.subscription || "Free"}
-          </span>
-        </div>
+<div className="flex items-center gap-2">
+  <span className="text-gray-600">Subscription:</span>
+
+  <span
+    className={`font-semibold ${
+      userDoc?.plan === "pro"
+        ? "text-green-700"
+        : "text-red-900"
+    }`}
+  >
+    {userDoc?.plan === "pro" ? "Pro" : "Free"}
+  </span>
+
+  {userDoc?.plan === "pro" && (
+    <span className="ml-2 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700">
+      ACTIVE
+    </span>
+  )}
+</div>
+
+
       </div>
 
       <Actionbar
@@ -462,19 +499,17 @@ const filteredMedicines = medicines.filter((med) => {
                       onChange={(e) => {
                         const newQty = Number(e.target.value) || 0;
                         const ref = doc(db, "users", user.uid, "medicines", med.id);
-                        const newTotal = newQty * (med.pack || 1);
-                        
-                        let newStatus = "In Stock";
-                        if (newQty === 0) {
-                          newStatus = "Out of Stock";
-                        } else if (newQty <= (med.minStock || 0)) {
-                          newStatus = "Low Stock";
-                        }
+                      const { total, status } = calculateInventory(
+  newQty,
+  med.pack || 1,
+  med.minStock || 0
+);
+
                         
                         updateDoc(ref, { 
                           qty: newQty,
-                          total: newTotal,
-                          status: newStatus
+                          total: total,
+                          status: status
                         });
                         fetchMedicines();
                       }}
@@ -489,11 +524,18 @@ const filteredMedicines = medicines.filter((med) => {
                       onChange={(e) => {
                         const newPack = Number(e.target.value) || 1;
                         const ref = doc(db, "users", user.uid, "medicines", med.id);
-                        const newTotal = (med.qty || 0) * newPack;
-                        updateDoc(ref, { 
-                          pack: newPack,
-                          total: newTotal
-                        });
+                       const { total, status } = calculateInventory(
+  med.qty || 0,
+  newPack,
+  med.minStock || 0
+);
+
+updateDoc(ref, {
+  pack: newPack,
+  total,
+  status
+});
+
                         fetchMedicines();
                       }}
                       className="w-full border rounded px-2 py-2 text-sm "
@@ -530,17 +572,21 @@ const filteredMedicines = medicines.filter((med) => {
                         const newMinStock = Number(e.target.value) || 0;
                         const ref = doc(db, "users", user.uid, "medicines", med.id);
                         
-                        let newStatus = "In Stock";
-                        if ((med.qty || 0) === 0) {
-                          newStatus = "Out of Stock";
-                        } else if ((med.qty || 0) <= newMinStock) {
-                          newStatus = "Low Stock";
-                        }
+                        const { total, status } = calculateInventory(
+  med.qty || 0,
+  med.pack || 1,
+  newMinStock
+);
+
+updateDoc(ref, {
+  minStock: newMinStock,
+  total,
+  status
+});
+
                         
-                        updateDoc(ref, { 
-                          minStock: newMinStock,
-                          status: newStatus
-                        });
+
+
                         fetchMedicines();
                       }}
                       className="w-full border rounded px-2 py-2 text-sm "
@@ -741,6 +787,37 @@ const filteredMedicines = medicines.filter((med) => {
             ))}
           </tbody>
         </table>
+              {showUpgradePopup && (
+  <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+    <div className="bg-[#1f1f1f] rounded-xl p-6 w-[320px] relative text-center">
+      
+      {/* Close button */}
+      <button
+        onClick={() => setShowUpgradePopup(false)}
+        className="absolute top-2 right-3 text-white text-xl"
+      >
+        ×
+      </button>
+
+      <h3 className="text-xl font-semibold text-red-400 mb-2">
+        Unlock Unlimited Inventory with Pro
+      </h3>
+      <br />
+
+      <p className="text-sm text-gray-300 mb-4">
+        Free plan allows only <b>10 medicines</b>.<br /><br />
+        <span className="font-bold text-green-500 text-lg">Upgrade to Pro</span> <br /><br />for unlimited inventory & auto deduction.
+      </p>
+
+      <button
+        onClick={() => navigate("/subscription")}
+        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg w-full"
+      >
+        Unlock Pro Features
+      </button>
+    </div>
+  </div>
+)}
       </div>
     </div>
   );

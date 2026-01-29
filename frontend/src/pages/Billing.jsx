@@ -7,12 +7,14 @@ import {
   doc,
   collection,
   getDocs,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import Actionbar from "../components/Actionbar.jsx";
+import { useNavigate } from "react-router-dom";
 
 const Billing = () => {
-  const { user } = useAuth();
+  const { user, userDoc } = useAuth();
   const [userData, setUserData] = useState(null);
   const [pharmacyName, setPharmacyName] = useState("");
   const [pharmacyAddress, setPharmacyAddress] = useState("");
@@ -22,6 +24,11 @@ const Billing = () => {
   const [loadingUserData, setLoadingUserData] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
   const [gstPercent, setGstPercent] = useState(12);
+  const [showUpgradePopup, setShowUpgradePopup] = useState(false);
+  const [billStatus, setBillStatus] = useState("DRAFT");
+  const navigate = useNavigate();
+
+  const [inventory, setInventory] = useState([]);
 
   const emptyRow = {
     generic: "",
@@ -35,7 +42,6 @@ const Billing = () => {
     amount: 0,
     status: "",
   };
-
   const [billItems, setBillItems] = useState([emptyRow]);
 
   const createEmptyRow = () => ({
@@ -44,6 +50,7 @@ const Billing = () => {
     batch: "",
     expiry: "",
     qty: "",
+    unit: "TABLET",
     packSize: "",
     mrp: "",
     rate: "",
@@ -51,8 +58,6 @@ const Billing = () => {
     amount: 0,
     status: "",
   });
-
-  const [inventory, setInventory] = useState([]);
 
   const [patient, setPatient] = useState({
     name: "",
@@ -75,6 +80,8 @@ const Billing = () => {
     time: "",
   });
 
+  const isFinalized = billStatus === "FINALIZED";
+
   const generateInvoiceNumber = async () => {
     const ref = doc(db, "counters", "invoices");
     const snap = await getDoc(ref);
@@ -96,7 +103,7 @@ const Billing = () => {
   const handleNewBill = async () => {
     // DO NOT restore inventory - NEW BILL means the previous bill is finalized
     // Inventory has already been deducted during billing
-    
+
     localStorage.removeItem("billingDraft");
 
     setPatient({
@@ -111,6 +118,28 @@ const Billing = () => {
     const invoiceNo = await generateInvoiceNumber();
     const now = new Date();
 
+    // 🔹 CREATE BILL DOCUMENT (DRAFT)
+    if (user) {
+      const billRef = doc(db, "users", user.uid, "bills", String(invoiceNo));
+
+      await setDoc(billRef, {
+        invoiceNo: invoiceNo,
+        patient: {
+          name: "",
+          address: "",
+          doctor: "",
+        },
+        items: [],
+        totals: {
+          subtotal: 0,
+          gst: 0,
+          grandTotal: 0,
+        },
+        status: "DRAFT", // 🔴 IMPORTANT
+        createdAt: serverTimestamp(),
+      });
+    }
+
     setInvoiceMeta({
       invoiceNo: invoiceNo,
       date: now.toLocaleDateString("en-IN"),
@@ -121,7 +150,6 @@ const Billing = () => {
       }),
     });
   };
-
 
   const handleSavePharmacy = async () => {
     if (!user) return;
@@ -206,6 +234,12 @@ const Billing = () => {
   }, [userData, loadingUserData]);
 
   const addRowAt = (index) => {
+    if (billStatus === "FINALIZED") return;
+    if (userDoc?.plan === "free" && billItems.length >= 3) {
+      setShowUpgradePopup(true);
+      return;
+    }
+
     const updated = [...billItems];
     updated.splice(index, 0, createEmptyRow());
     setBillItems(updated);
@@ -231,6 +265,31 @@ const Billing = () => {
 
     setIsInitialized(true);
   }, []); // Only run once on mount
+
+  useEffect(() => {
+    const syncBillStatus = async () => {
+      if (!user || !invoiceMeta.invoiceNo) return;
+
+      const billRef = doc(
+        db,
+        "users",
+        user.uid,
+        "bills",
+        String(invoiceMeta.invoiceNo),
+      );
+
+      const billSnap = await getDoc(billRef);
+
+      if (billSnap.exists()) {
+        const data = billSnap.data();
+        if (data.status) {
+          setBillStatus(data.status);
+        }
+      }
+    };
+
+    syncBillStatus();
+  }, [user, invoiceMeta.invoiceNo]);
 
   // Generate first invoice if no draft exists
   useEffect(() => {
@@ -265,7 +324,7 @@ const Billing = () => {
   // Fetch inventory
   const fetchInventory = async () => {
     if (!user) return;
-    
+
     const ref = collection(db, "users", user.uid, "medicines");
     const snap = await getDocs(ref);
 
@@ -281,216 +340,251 @@ const Billing = () => {
     fetchInventory();
   }, [user]);
 
-  // Update inventory quantity in Firestore
-  const updateInventoryQty = async (medicineId, qtyChange) => {
-    if (!user || !medicineId) return;
-
-    const medRef = doc(db, "users", user.uid, "medicines", medicineId);
-    const medSnap = await getDoc(medRef);
-    
-    if (medSnap.exists()) {
-      const currentQty = medSnap.data().qty || 0;
-      const newQty = currentQty - qtyChange; // Subtract the change
-      
-      await updateDoc(medRef, {
-        qty: newQty,
-      });
-      
-      // Refresh inventory
-      fetchInventory();
-    }
-  };
-
   // Calculate totals
   const calculateTotals = () => {
-    const subtotal = billItems.reduce((sum, item) => {
+    let subtotal = 0;
+    let totalGST = 0;
+
+    billItems.forEach((item) => {
       const qty = Number(item.qty) || 0;
-      const mrp = Number(item.mrp) || 0;
-      return sum + (qty * mrp);
-    }, 0);
+      if (qty === 0) return;
 
-    const totalGST = billItems.reduce((sum, item) => {
-      return sum + (Number(item.gstAmount) || 0);
-    }, 0);
+      const unit = item.unit || "TABLET";
+      const packSize = Number(item.packSize) || 1;
 
-    const grandTotal = subtotal + totalGST;
+      const tabletsSold = unit === "STRIP" ? qty * packSize : qty;
+
+      const stripRate = Number(item.rate) || 0;
+      const tabletRate = stripRate / packSize;
+
+      const baseAmount = tabletsSold * tabletRate;
+      const gstAmount = (baseAmount * gstPercent) / 100;
+
+      subtotal += baseAmount;
+      totalGST += gstAmount;
+    });
 
     return {
       subtotal: subtotal.toFixed(2),
       totalGST: totalGST.toFixed(2),
-      grandTotal: grandTotal.toFixed(2),
+      grandTotal: (subtotal + totalGST).toFixed(2),
     };
   };
 
   const totals = calculateTotals();
 
+  const finalizeBill = async () => {
+    try {
+      // Safety check
+      if (billStatus === "FINALIZED") {
+        window.print();
+        return;
+      }
+
+      // 1️⃣ Deduct inventory ONCE
+      for (const item of billItems) {
+        if (!item.medicineId || !item.qty) continue;
+
+        const medRef = doc(db, "users", user.uid, "medicines", item.medicineId);
+        const medSnap = await getDoc(medRef);
+
+        if (!medSnap.exists()) continue;
+
+        // 🔹 READ INVENTORY DATA
+        const medData = medSnap.data();
+
+        // Total tablets available in inventory
+        const totalTablets = Number(medData.total) || 0;
+
+        // 🔹 CALCULATE TABLETS SOLD BASED ON UNIT
+        const unit = item.unit || "TABLET";
+        const packSize = Number(medData.pack) || 1;
+
+        // 🔹 CALCULATE TABLETS SOLD BASED ON UNIT
+        const tabletsSold =
+          (item.unit || "TABLET") === "STRIP"
+            ? Number(item.qty) * packSize
+            : Number(item.qty);
+
+        // 🔹 CHECK STOCK
+        if (tabletsSold > totalTablets) {
+          alert(`Insufficient stock for ${item.generic}`);
+          return;
+        }
+
+        // 🔹 DEDUCT TABLETS
+        const newTotal = totalTablets - tabletsSold;
+
+        // 🔹 CONVERT BACK TO STRIPS
+        const newQty = Math.floor(newTotal / packSize);
+
+        // 🔹 UPDATE INVENTORY
+        await updateDoc(medRef, {
+          total: newTotal,
+          qty: newQty,
+        });
+      }
+
+      // 2️⃣ Update bill status to FINALIZED
+      const billRef = doc(
+        db,
+        "users",
+        user.uid,
+        "bills",
+        String(invoiceMeta.invoiceNo),
+      );
+
+      await setDoc(
+        billRef,
+        {
+          status: "FINALIZED",
+          items: billItems,
+          totals,
+          finalizedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      // 3️⃣ Lock UI
+      setBillStatus("FINALIZED");
+    } catch (error) {
+      console.error("Error finalizing bill:", error);
+      alert("Failed to save bill. Please try again.");
+    }
+  };
+
+  const primaryAction =
+    billStatus === "DRAFT"
+      ? {
+          label: "SAVE BILL",
+          onClick: finalizeBill,
+          className:
+            "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
+        }
+      : {
+          label: "PRINT",
+          onClick: () => window.print(),
+          className:
+            "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
+        };
+
   return (
     <div>
-      <style>{`
-        @media print {
-          @page {
-            size: A4 landscape;
-            margin: 15mm 10mm;
-          }
-          
-          body {
-            print-color-adjust: exact;
-            -webkit-print-color-adjust: exact;
-          }
-          
-          /* Hide elements that shouldn't print */
-          .no-print {
-            display: none !important;
-          }
-          
-          /* Hide Status and Actions columns */
-          .print-hide {
-            display: none !important;
-          }
-          
-          /* Ensure the print area takes full width */
-          #print-area {
-            height: auto !important;
-            overflow: visible !important;
-            border: 1px solid black !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            display: flex !important;
-            flex-direction: column !important;
-            min-height: 100vh !important;
-          }
-          
-          /* Fix table layout for printing */
-          table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            font-size: 9px !important;
-          }
-          
-          /* Add borders to table cells */
-          th, td {
-            border: 1px solid #000 !important;
-            padding: 3px 4px !important;
-          }
-          
-          thead {
-            background-color: #d1d5db !important;
-          }
-          
-          /* Make inputs look like regular text when printing */
-          input {
-            border: none !important;
-            background: transparent !important;
-            padding: 0 !important;
-            font-size: 9px !important;
-          }
-          
-          /* Remove hover effects */
-          tr:hover {
-            background: white !important;
-          }
-          
-          /* Fix the container margins/padding */
-          .min-h-\\[calc\\(100vh-6rem\\)\\] {
-            min-height: auto !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            background: white !important;
-          }
-          
-          /* Remove scrollbars */
-          .overflow-y-auto, .overflow-x-auto {
-            overflow: visible !important;
-            height: auto !important;
-          }
-          
-          /* Make the table section grow to push footer down */
-          .table-container {
-            flex-grow: 1 !important;
-            min-height: 400px !important;
-          }
-          
-          /* Keep footer at bottom */
-          .footer-section {
-            margin-top: auto !important;
-            page-break-inside: avoid !important;
-          }
-          
-          /* Header section with borders */
-          .header-section {
-            border-bottom: 2px solid black !important;
-            padding: 6px 16px !important;
-            height: auto !important;
-            display: grid !important;
-            grid-template-columns: 1fr 1fr 1fr !important;
-            gap: 40px !important;
-          }
-          
-          /* Pharmacy info (first column) */
-          .header-section > div:nth-child(1) {
-            gap: 1px !important;
-          }
-          
-          .header-section > div:nth-child(1) h3 {
-            font-size: 14px !important;
-            font-weight: 800 !important;
-            margin: 0 !important;
-          }
-          
-          .header-section > div:nth-child(1) p {
-            font-size: 11px !important;
-            margin: 0 !important;
-            font-weight: 700 !important;
-            line-height: 1.3 !important;
-          }
-          
-          /* Patient info (middle column) */
-          .header-section > div:nth-child(2) {
-            gap: 1px !important;
-          }
-          
-          .header-section > div:nth-child(2) input {
-            border: none !important;
-            outline: none !important;
-            background: transparent !important;
-            display: inline !important;
-            font-size: 11px !important;
-            font-weight: 700 !important;
-            max-width: 200px !important;
-          }
-          
-          .header-section > div:nth-child(2) p {
-            font-size: 11px !important;
-            margin: 0 !important;
-            font-weight: 700 !important;
-            line-height: 2 !important;
-          }
-          
-          .header-section > div:nth-child(2) span {
-            font-weight: 700 !important;
-          }
-          
-          /* Invoice info (third column) */
-          .header-section > div:nth-child(3) {
-            gap: 1px !important;
-          }
-          
-          .header-section > div:nth-child(3) > div {
-            font-size: 12px !important;
-            font-weight: 700 !important;
-            margin: 0 !important;
-            line-height: 2 !important;
-          }
-          
-          .header-section > div:nth-child(3) span {
-            font-weight: 700 !important;
-          }
-          
-          .header-section input::placeholder {
-            color: transparent !important;
-          }
-        }
-      `}</style>
+     <style>{`
+/* ================= PRINT ONLY ================= */
+@media print {
+
+  /* kill all viewport-based heights */
+  [class*="min-h"],
+  [class*="h-["] {
+    min-height: auto !important;
+    height: auto !important;
+  }
+
+
+ .header-section input {
+    color: #000 !important;
+    -webkit-text-fill-color: #000 !important;
+    background: transparent !important;
+  }
+
+  /* --- TABLE CORE --- */
+  table {
+    width: 100% !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    box-sizing: border-box !important;
+    border: 1px solid #000 !important;
+    padding: 3px !important;
+    font-size: 11px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* --- REMOVE STATUS & ACTIONS COMPLETELY IN PRINT --- */
+  col:nth-child(13),
+  col:nth-child(14) {
+    display: none !important;
+  }
+
+  th:nth-child(13),
+  td:nth-child(13),
+  th:nth-child(14),
+  td:nth-child(14) {
+    display: none !important;
+  }
+
+  /* --- HEADER GRID LOCK --- */
+  .header-section {
+    display: grid !important;
+    grid-template-columns: 33% 34% 33% !important;
+    width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  .header-section * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .header-section input {
+    width: 100% !important;
+    min-width: 0 !important;
+    border: none !important;
+  }
+
+  /* --- PAGE CONTROL --- */
+  #print-area {
+   margin: 0 !important;
+      width: calc(100% - 10px) !important;
+    border: 1px solid #000 !important;
+    box-sizing: border-box !important;
+     min-height: auto !important;
+    height: auto !important;
+     padding-bottom: 0 !important;
+  }
+
+  html, body {
+    height: auto !important;
+  }
+
+     body {
+    margin: 0 !important;
+  }
+
+  .footer-section {
+    page-break-inside: avoid !important;
+    margin-top: 10px !important;
+  }
+
+  /* --- HIDE UI --- */
+  .no-print,
+  .print-hide,
+  button,
+  nav {
+    display: none !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+}
+
+/* ================= END PRINT ================= */
+
+
+
+`}</style>
+
+
       {!loadingUserData && showPopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white p-4 sm:p-6 rounded-xl w-full max-w-md sm:w-96">
@@ -545,12 +639,7 @@ const Billing = () => {
           primarycolor="focus:ring-gray-900/60 rounded-xl bg-gray-400 hover:bg-gray-500"
           secondarycolor="focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500"
           extraAction={[
-            {
-              label: "PRINT",
-              className:
-                "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
-              onClick: () => window.print(),
-            },
+            primaryAction,
             {
               label: "NEW BILL",
               className:
@@ -560,52 +649,76 @@ const Billing = () => {
           ]}
           showSearch={false}
         />
-        <main id="print-area" className="border m-1 sm:m-2 mb-1 min-h-[calc(100vh-14rem)] sm:h-[calc(100vh-11rem)] flex flex-col">
-          <div className="pl-2 sm:pl-4 border-b border-black py-3 sm:py-0 sm:h-24 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-16 header-section flex-shrink-0">
+        <main
+          id="print-area"
+          className="border m-1 sm:m-2 mb-1 min-h-[calc(100vh-14rem)] sm:h-[calc(100vh-11rem)] flex flex-col"
+        >
+          <div className="pl-2 sm:pl-4 border-b border-black py-3 sm:py-0 sm:h-24 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-16 header-section shrink-0">
             <div className="flex flex-col gap-1">
               <h3 className="text-blue-600 font-extrabold text-sm sm:text-base">
                 {userData?.pharmacyName || "—"}
               </h3>
-              <p className="text-xs sm:text-sm">{userData?.pharmacyAddress || "—"}</p>
-              <p className="text-xs sm:text-sm">Phone: +91 {userData?.pharmacyPhone || "—"}</p>
-              <p className="text-xs sm:text-sm">GSTIN: {userData?.pharmacyGSTIN || "—"}</p>
+              <p className="text-xs sm:text-sm">
+                {userData?.pharmacyAddress || "—"}
+              </p>
+              <p className="text-xs sm:text-sm">
+                Phone: +91 {userData?.pharmacyPhone || "—"}
+              </p>
+              <p className="text-xs sm:text-sm">
+                GSTIN: {userData?.pharmacyGSTIN || "—"}
+              </p>
             </div>
-            <div className="flex flex-col gap-2 sm:gap-3 sm:ml-28">
+            <div className="flex flex-col gap-2">
               <p className="text-xs sm:text-sm">
                 <span className="font-semibold">Patient:</span>{" "}
                 <input
                   value={patient.name}
                   placeholder="Enter Patient Name"
+                  disabled={isFinalized}
                   onChange={(e) =>
                     setPatient({ ...patient, name: e.target.value })
                   }
-                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1"
+                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1 no-print"
                 />
+                {/* Print */}
+<span className="hidden print:inline">
+  {patient.name || "—"}
+</span>
               </p>
               <p className="text-xs sm:text-sm">
                 <span className="font-semibold">Address:</span>{" "}
                 <input
                   value={patient.address}
                   placeholder="Enter Patient Address"
+                  disabled={isFinalized}
                   onChange={(e) =>
                     setPatient({ ...patient, address: e.target.value })
                   }
-                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1"
+                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1 no-print"
                 />
+                {/* Print */}
+<span className="hidden print:inline">
+  {patient.address || "—"}
+</span>
               </p>
               <p className="text-xs sm:text-sm">
                 <span className="font-semibold">Doctor:</span>{" "}
                 <input
                   value={patient.doctor}
                   placeholder="Enter Doctor Name"
+                  disabled={isFinalized}
                   onChange={(e) =>
                     setPatient({ ...patient, doctor: e.target.value })
                   }
-                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1"
+                  className="border-b border-gray-300 outline-none w-full sm:w-auto text-xs sm:text-sm px-1 no-print"
                 />
+                {/* Print */}
+<span className="hidden print:inline">
+  {patient.doctor || "—"}
+</span>
               </p>
             </div>
-            <div className="flex flex-col gap-2 sm:gap-3 sm:ml-48">
+            <div className="flex flex-col gap-2">
               <div className="text-xs sm:text-sm">
                 <span className="font-semibold">Invoice No:</span>{" "}
                 {invoiceMeta.invoiceNo}
@@ -622,26 +735,45 @@ const Billing = () => {
           </div>
 
           <div className="m-1 sm:m-2 flex-1 overflow-y-auto overflow-x-auto scrollbar-hide table-container">
-            <table className="w-full text-left divide-y divide-gray-400 min-w-[900px]">
+            <table className="w-full text-left divide-y divide-gray-400">
+                <colgroup>
+    <col style={{ width: "3%" }} />   {/* Sr */}
+    <col style={{ width: "16%" }} />  {/* Generic Name (WIDE) */}
+    <col style={{ width: "8%" }} />   {/* Brand */}
+    <col style={{ width: "8%" }} />   {/* Batch */}
+    <col style={{ width: "7%" }} />   {/* Expiry */}
+    <col style={{ width: "6%" }} />   {/* Qty */}
+    <col style={{ width: "6%" }} />   {/* Unit (SMALLER) */}
+    <col style={{ width: "6%" }} />   {/* Pack Size (SMALLER) */}
+    <col style={{ width: "6%" }} />   {/* Rate (SMALLER) */}
+    <col style={{ width: "7%" }} />   {/* MRP */}
+    <col style={{ width: "6%" }} />   {/* GST */}
+    <col style={{ width: "7%" }} />   {/* Amount */}
+    <col style={{ width: "%" }} />   {/* Status */}
+    <col style={{ width: "%" }} />   {/* Actions */}
+  </colgroup>
               <thead className="bg-gray-300 sticky top-0 z-10 text-center">
                 <tr className="text-xs sm:text-sm font-semibold">
-                  <th className="px-1 sm:px-2 py-1" style={{ width: 40 }}>
+                  <th className="px-1 sm:px-2 py-1">
                     Sr.
                   </th>
-                  <th className="px-1 sm:px-2 py-1" style={{ minWidth: 150 }}>
+                  <th className="px-1 sm:px-2 py-1">
                     Generic Name
                   </th>
                   <th className="px-1 sm:px-2 py-1">Brand</th>
                   <th className="px-1 sm:px-2 py-1">Batch No.</th>
                   <th className="px-1 sm:px-2 py-1">Expiry</th>
                   <th className="px-1 sm:px-2 py-1">Qty </th>
+                  <th className="px-1 sm:px-2 py-1">Unit</th>
                   <th className="px-1 sm:px-2 py-1">Pack Size</th>
                   <th className="px-1 sm:px-2 py-1">Rate</th>
                   <th className="px-1 sm:px-2 py-1">MRP</th>
                   <th className="px-1 sm:px-2 py-1">
                     <div className="flex items-center gap-1 justify-center">
                       <span className="text-xs no-print">GST %</span>
-                      <span className="hidden print:inline text-xs">GST {gstPercent}%</span>
+                      <span className="hidden print:inline text-xs">
+                        GST {gstPercent}%
+                      </span>
                       <input
                         type="number"
                         value={gstPercent}
@@ -665,74 +797,79 @@ const Billing = () => {
                 {billItems.map((item, index) => (
                   <tr key={index} className="bg-white hover:bg-gray-100">
                     {/* Sr. No */}
-                    <td className="p-1 border text-center text-xs">{index + 1}</td>
+                    <td className="p-1 border text-center text-xs">
+                      {index + 1}
+                    </td>
 
-                 {/* Generic Name - FIXED */}
-<td className="p-1 border">
-  <input
-    type="text"
-    value={item.generic || ""}
-    onChange={(e) => {
-      const value = e.target.value;
-      const updated = [...billItems];
+                    {/* Generic Name - FIXED */}
+                    <td className="p-1 border">
+                      <input
+                        type="text"
+                        value={item.generic || ""}
+                        disabled={isFinalized}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const updated = [...billItems];
 
-      // 1️⃣ Always allow typing freely
-      updated[index] = {
-        ...updated[index],
-        generic: value,
-      };
+                          // 1️⃣ Always allow typing freely
+                          updated[index] = {
+                            ...updated[index],
+                            generic: value,
+                          };
 
-      // 2️⃣ Exact match ONLY (no partial match)
-      const match = inventory.find(
-        (m) =>
-          m.generic &&
-          m.generic.toLowerCase().trim() ===
-            value.toLowerCase().trim()
-      );
+                          // 2️⃣ Exact match ONLY (no partial match)
+                          const match = inventory.find(
+                            (m) =>
+                              m.generic &&
+                              m.generic.toLowerCase().trim() ===
+                                value.toLowerCase().trim(),
+                          );
 
-      // 3️⃣ Auto-fill ONLY on exact match
-      if (match) {
-        updated[index] = {
-          ...updated[index],
-          medicineId: match.id,
-          generic: match.generic,
-          brand: match.brand || "",
-          batch: match.batch || "",
-          expiry: match.expiry || "",
-          packSize: match.pack || 0,
-          mrp: match.total || 0,
-         rate: match.rate || 0,
-          gstPercent: 12,
-          originalStock: match.qty || 0,
-          status: match.status || "In Stock",
-          qty: updated[index].qty || 0, // preserve qty
-        };
-      }
+                          // 3️⃣ Auto-fill ONLY on exact match
+                          if (match) {
+                            updated[index] = {
+                              ...updated[index],
+                              medicineId: match.id,
+                              generic: match.generic,
+                              brand: match.brand || "",
+                              batch: match.batch || "",
+                              expiry: match.expiry || "",
+                              packSize: match.pack || 0,
+                              rate: match.rate || 0, // strip price
+                              mrp: match.rate || 0, // store strip MRP for reference
+                              gstPercent: 12,
+                              originalStock: match.qty || 0,
+                              status: match.status || "In Stock",
+                              inventoryUnit: match.unit || "Tablet",
+                              unit:
+                                match.unit === "Tablet"
+                                  ? "TABLET"
+                                  : match.unit.toUpperCase(),
+                              qty: updated[index].qty || 0, // preserve qty
+                            };
+                          }
 
-      setBillItems(updated);
-    }}
-    className="w-full px-2 "
-    placeholder="Type generic name..."
-    autoComplete="off"
-  />
-</td>
-
+                          setBillItems(updated);
+                        }}
+                        className="w-full px-2 "
+                        placeholder="Type generic name..."
+                        autoComplete="off"
+                      />
+                    </td>
 
                     {/* Brand - READ-ONLY when auto-filled */}
-               <td className="p-1 border text-center">
-  <div className="flex items-center justify-center">
-    {item.brand || "—"}
-  </div>
-</td>
-
+                    <td className="p-1 border text-center">
+                      <div className="flex items-center justify-center">
+                        {item.brand || "—"}
+                      </div>
+                    </td>
 
                     {/* Batch No. - READ-ONLY when auto-filled */}
-                <td className="p-1 border text-center">
-  <div className="flex items-center justify-center">
-    {item.batch || "—"}
-  </div>
-</td>
-
+                    <td className="p-1 border text-center">
+                      <div className="flex items-center justify-center">
+                        {item.batch || "—"}
+                      </div>
+                    </td>
 
                     {/* Expiry - ALWAYS READ-ONLY */}
                     <td className="p-1 border text-center">
@@ -747,45 +884,31 @@ const Billing = () => {
                         type="number"
                         value={item.qty}
                         min="0"
-                        onChange={async (e) => {
-                          const newQty = Number(e.target.value) || 0;
-                          
-                          // Prevent negative values
-                          if (newQty < 0) {
-                            return;
-                          }
-                          
+                        disabled={isFinalized}
+                        onChange={(e) => {
+                          const enteredQty = Number(e.target.value) || 0;
+                          if (enteredQty < 0) return;
+
                           const updated = [...billItems];
                           const currentItem = updated[index];
-                          const previousQty = Number(currentItem.qty) || 0;
 
-                          // Get current inventory stock
-                          const inventoryItem = inventory.find(
-                            (m) => m.id === currentItem.medicineId
-                          );
-                          
-                          // Calculate total available = current inventory + what we already took for this bill item
-                          const currentInventoryQty = inventoryItem ? inventoryItem.qty : 0;
-                          const totalAvailable = currentInventoryQty + previousQty;
+                          const unit = currentItem.unit || "TABLET";
+                          const packSize = Number(currentItem.packSize) || 1;
 
-                          // Check if new quantity exceeds total available stock
-                          if (newQty > totalAvailable) {
-                            alert(`Insufficient stock. Available: ${totalAvailable}`);
-                            return;
-                          }
+                          // 🔢 tablets sold
+                          const tabletsSold =
+                            unit === "STRIP"
+                              ? enteredQty * packSize
+                              : enteredQty;
 
-                          // Calculate the difference
-                          const qtyDifference = newQty - previousQty;
+                          // 💾 SAVE QTY (THIS WAS MISSING)
+                          currentItem.qty = enteredQty;
 
-                          // Update inventory
-                          if (currentItem.medicineId && qtyDifference !== 0) {
-                            await updateInventoryQty(currentItem.medicineId, qtyDifference);
-                          }
+                          // 💰 pricing (rate = strip price)
+                          const stripRate = Number(currentItem.rate || 0);
+                          const tabletRate = stripRate / packSize;
 
-                          currentItem.qty = newQty;
-
-                          // Calculate based on MRP (not rate)
-                          const baseAmount = newQty * Number(currentItem.mrp || 0);
+                          const baseAmount = tabletsSold * tabletRate;
                           const gstAmount = (baseAmount * gstPercent) / 100;
 
                           currentItem.gstAmount = gstAmount;
@@ -798,46 +921,81 @@ const Billing = () => {
                       />
                     </td>
 
-                    {/* Pack Size - READ-ONLY when auto-filled */}
-                  <td className="p-1 border text-center">
-  <div className=" flex items-center justify-center">
-    {item.packSize || "—"}
-  </div>
-</td>
+                    {/* Unit */}
+                    <td className="p-1 border text-center">
+                      {item.inventoryUnit === "Tablet" ? (
+                        // ✅ Tablet → allow Tablet / Strip
+                        <select
+                          value={item.unit}
+                          disabled={isFinalized}
+                          onChange={(e) => {
+                            const updated = [...billItems];
+                            updated[index].unit = e.target.value;
+                            setBillItems(updated);
+                          }}
+                          className="unit-select w-full text-xs px-1"
+                        >
+                          <option value="TABLET">Tablet</option>
+                          <option value="STRIP">Strip</option>
+                        </select>
+                      ) : (
+                        // ❌ Not Tablet → show fixed unit
+                        <span className="block text-xs font-semibold pr-12">
+                          {item.inventoryUnit || "—"}
+                        </span>
+                      )}
+                    </td>
 
+                    {/* Pack Size - READ-ONLY when auto-filled */}
+                    <td className="p-1 border text-center">
+                      <div className=" flex items-center justify-center">
+                        {item.packSize || "—"}
+                      </div>
+                    </td>
 
                     {/* Rate - when auto-filled */}
-       <td className="p-1 border text-center">
-  <div className=" flex items-center justify-center">
-    ₹ {item.rate ?? "—"}
-  </div>
-</td>
-
+                    <td className="p-1 border text-center">
+                      <div className=" flex items-center justify-center">
+                        ₹ {item.rate ?? "—"}
+                      </div>
+                    </td>
 
                     {/* MRP (used for calculations) */}
                     <td className="py-1 px-2 border">
                       <div className="relative flex items-center">
-                        <span className="absolute left-3 pointer-events-none">₹</span>
+                        <span className="absolute left-3 pointer-events-none">
+                          ₹
+                        </span>
                         <input
                           type="number"
                           value={item.mrp || ""}
                           min="0"
                           onChange={(e) => {
                             const mrp = Number(e.target.value) || 0;
-                            
+
                             // Prevent negative values
                             if (mrp < 0) {
                               return;
                             }
-                            
+
                             const updated = [...billItems];
                             const currentItem = updated[index];
-                            
+
                             currentItem.mrp = mrp;
 
                             // Recalculate amount based on new MRP
                             const qty = Number(currentItem.qty) || 0;
-                            const baseAmount = qty * mrp;
+                            const unit = currentItem.unit || "TABLET";
+                            const packSize = Number(currentItem.packSize) || 1;
+
+                            const tabletsSold =
+                              unit === "STRIP" ? qty * packSize : qty;
+
+                            const stripRate = Number(currentItem.rate || 0);
+                            const tabletRate = stripRate / packSize;
+
+                            const baseAmount = tabletsSold * tabletRate;
+
                             const gstAmount = (baseAmount * gstPercent) / 100;
 
                             currentItem.gstAmount = gstAmount;
@@ -856,60 +1014,51 @@ const Billing = () => {
                     </td>
 
                     {/* Amount (read-only) */}
-                    <td className="p-1 border text-right">₹ {item.amount?.toFixed(2) || "0.00"}</td>
+                    <td className="p-1 border text-right">
+                      ₹ {item.amount?.toFixed(2) || "0.00"}
+                    </td>
 
                     {/* Status - Display from inventory */}
                     <td className="p-1 border print-hide pl-6">
-                      <span className={`px-2 py-0.5 rounded text-xs ${
-                        item.status === "In Stock" 
-                          ? "bg-green-200 text-green-800" 
-                          : item.status === "Low Stock"
-                          ? "bg-yellow-200 text-yellow-800"
-                          : "bg-red-200 text-red-800"
-                      }`}>
+                      <span
+                        className={`px-2 py-0.5 rounded text-xs ${
+                          item.status === "In Stock"
+                            ? "bg-green-200 text-green-800"
+                            : item.status === "Low Stock"
+                              ? "bg-yellow-200 text-yellow-800"
+                              : "bg-red-200 text-red-800"
+                        }`}
+                      >
                         {item.status || "—"}
                       </span>
                     </td>
 
                     {/* Actions */}
-                    <td className="p-1 border print-hide">
+                    <td className="p-1 px-2 border print-hide">
                       <div className="flex flex-col sm:flex-row justify-center gap-1 sm:gap-2">
-                        <button
-                          onClick={async () => {
-                            const itemToDelete = billItems[index];
-                            
-                            // Restore quantity to inventory if item was selected
-                            if (itemToDelete.medicineId && itemToDelete.qty > 0) {
-                              const medRef = doc(db, "users", user.uid, "medicines", itemToDelete.medicineId);
-                              const medSnap = await getDoc(medRef);
-                              
-                              if (medSnap.exists()) {
-                                const currentQty = medSnap.data().qty || 0;
-                                const newQty = currentQty + Number(itemToDelete.qty);
-                                
-                                await updateDoc(medRef, {
-                                  qty: newQty,
-                                });
-                                
-                                fetchInventory();
-                              }
-                            }
-                            
-                            const updated = billItems.filter(
-                              (_, i) => i !== index,
-                            );
-                            setBillItems(updated.length ? updated : [emptyRow]);
-                          }}
-                          className="text-red-600 hover:text-red-800 px-3 py-2 text-xs font-semibold whitespace-nowrap touch-manipulation"
-                        >
-                          Delete
-                        </button>
-                        <button
-                          onClick={() => addRowAt(index + 1)}
-                          className="text-blue-600 hover:text-blue-800 px-3 py-2 text-xs font-semibold whitespace-nowrap touch-manipulation"
-                        >
-                          Add
-                        </button>
+                        {!isFinalized && (
+                          <button
+                            onClick={async () => {
+                              const updated = billItems.filter(
+                                (_, i) => i !== index,
+                              );
+                              setBillItems(
+                                updated.length ? updated : [emptyRow],
+                              );
+                            }}
+                            className="text-red-600 hover:text-red-800 px-3 py-2 text-xs font-semibold whitespace-nowrap touch-manipulation"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        {!isFinalized && (
+                          <button
+                            onClick={() => addRowAt(index + 1)}
+                            className="text-blue-600 hover:text-blue-800 px-3 py-2 text-xs font-semibold"
+                          >
+                            Add
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -918,9 +1067,11 @@ const Billing = () => {
             </table>
           </div>
 
-          <div className="p-2 px-4 flex flex-col sm:flex-row justify-between items-end gap-4 footer-section flex-shrink-0">
-            <div className="left flex-shrink-0 w-full sm:w-auto">
-              <h2 className="font-bold text-xs sm:text-sm mb-1">Terms & Conditions</h2>
+          <div className="p-2 px-4 flex flex-col sm:flex-row justify-between items-end gap-4 footer-section shrink-0">
+            <div className="left shrink-0 w-full sm:w-auto">
+              <h2 className="font-bold text-xs sm:text-sm mb-1">
+                Terms & Conditions
+              </h2>
               <ul className="list-disc list-inside text-xs leading-tight space-y-0.5">
                 <li>Cut Strips will not be refunded</li>
                 <li>Medicines can be returned within 5 days with bill.</li>
@@ -929,7 +1080,7 @@ const Billing = () => {
               </ul>
             </div>
 
-            <div className="right border w-full sm:w-60 flex-shrink-0">
+            <div className="right border w-full sm:w-60 shrink-0">
               <div className="sign border-b-2 h-10 sm:h-12 p-1 flex items-start">
                 <p className="text-xs">AUTHORISED SIGNATORY</p>
               </div>
@@ -947,6 +1098,42 @@ const Billing = () => {
               </div>
             </div>
           </div>
+          {showUpgradePopup && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+              <div className="bg-[#1f1f1f] rounded-xl p-6 w-[320px] relative text-center">
+                {/* Close button */}
+                <button
+                  onClick={() => setShowUpgradePopup(false)}
+                  className="absolute top-2 right-3 text-white text-xl"
+                >
+                  ×
+                </button>
+
+                <h3 className="text-xl font-semibold text-red-400 mb-2">
+                  Unlock Billing with Pro
+                </h3>
+                <br />
+
+                <p className="text-sm text-gray-300 mb-4">
+                  Free plan allows only <b>3 medicines per bill</b>.<br />
+                  <br />
+                  <span className="font-bold text-green-500 text-lg">
+                    Upgrade to Pro
+                  </span>{" "}
+                  <br />
+                  <br />
+                  for unlimited billing & auto deduction.
+                </p>
+
+                <button
+                  onClick={() => navigate("/subscription")}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg w-full"
+                >
+                  Unlock Pro Features
+                </button>
+              </div>
+            </div>
+          )}
         </main>
       </div>
     </div>

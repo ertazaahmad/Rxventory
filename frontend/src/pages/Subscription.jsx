@@ -1,12 +1,91 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { load } from "@cashfreepayments/cashfree-js";
+import { createOrder } from "../services/payment";
+import { getAuth } from "firebase/auth";
+import { useEffect } from "react";
+
+
+
+
+const cashfree = new Cashfree({ mode: "sandbox" });
+
+
 
 const Subscription = () => {
 
 const { user, userDoc } = useAuth();
  const navigate = useNavigate();
+
+useEffect(() => {
+  if (userDoc?.plan === "pro") {
+    // Redirect + hard refresh
+    window.location.replace("/inventory");
+  }
+}, [userDoc?.plan]);
+
+
+
 const isFirstTime = userDoc?.hasPurchasedProBefore === false;
  const price = isFirstTime ? 249 : 349; 
+
+
+ const handleUpgrade = async () => {
+  try {
+    const auth = getAuth();
+    const user = auth.currentUser;
+
+    if (!user) {
+      alert("Please login again");
+      return;
+    }
+
+    const idToken = await user.getIdToken();
+
+    // 1️⃣ Create order from backend
+    const order = await createOrder(249, idToken);
+
+    if (!order?.payment_session_id) {
+      alert("Failed to initiate payment");
+      return;
+    }
+
+    // 2️⃣ Open Cashfree popup
+cashfree.checkout({
+  paymentSessionId: order.payment_session_id,
+  redirectTarget: "_modal",
+
+onPaymentSuccess: async function () {
+  try {
+    await fetch("http://localhost:5000/activate-pro", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+    });
+  } catch (err) {
+    console.error("Activation failed", err);
+  }
+},
+
+
+
+
+
+  onPaymentFailure: function (data) {
+    console.log("Payment failed:", data);
+    alert("Payment failed or cancelled");
+  },
+});
+
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong");
+  }
+};
+
+
 
 
   return (
@@ -23,7 +102,14 @@ const isFirstTime = userDoc?.hasPurchasedProBefore === false;
         {/* Close Button */}
         <button className="absolute top-3 sm:top-4 right-4 sm:right-6 text-white/60 hover:text-white 
                            text-xl sm:text-2xl"
-         onClick={() => navigate("/")}>
+         onClick={() => {
+  if (userDoc?.plan === "pro") {
+    window.location.replace("/inventory");
+  } else {
+    navigate("/inventory");
+  }
+}}
+>
           ✕
         </button>
 
@@ -65,7 +151,7 @@ const isFirstTime = userDoc?.hasPurchasedProBefore === false;
           {/* CENTER CTA - Hidden on mobile, visible on desktop */}
           <div className="text-center hidden lg:block">
             <p className="mb-3 text-white/70 text-sm sm:text-base">Ready to unlock billing?</p>
-            <button className="text-purple-400 hover:text-purple-300 underline text-sm sm:text-base">
+            <button className="text-purple-400 hover:text-purple-300 underline text-sm sm:text-base" onClick={handleUpgrade}>
               Upgrade to Pro
             </button>
           </div>
@@ -76,7 +162,7 @@ const isFirstTime = userDoc?.hasPurchasedProBefore === false;
             <p className="text-sm text-white/60 mb-4">₹{price} / month</p>
 
             <button className="w-full py-2 mb-6 rounded-md bg-purple-600 hover:bg-purple-700 
-                               transition text-xs sm:text-sm active:scale-95">
+                               transition text-xs sm:text-sm active:scale-95" onClick={handleUpgrade}>
               UPGRADE TO PRO
             </button>
 
@@ -91,7 +177,7 @@ const isFirstTime = userDoc?.hasPurchasedProBefore === false;
           {/* Mobile CTA - Only visible on mobile/tablet */}
           <div className="text-center lg:hidden col-span-1">
             <p className="mb-3 text-white/70 text-sm">Ready to unlock billing?</p>
-            <button className="text-purple-400 hover:text-purple-300 underline text-sm">
+            <button className="text-purple-400 hover:text-purple-300 underline text-sm" onClick={handleUpgrade}>
               Upgrade to Pro
             </button>
           </div>
