@@ -1,0 +1,4 @@
+# Firebase Admin SDK (NEVER COMMIT)
+*-firebase-adminsdk-*.json
+backend-cashfree/*.json
+.env
