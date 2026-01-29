@@ -1,3 +1,4 @@
+touch .gitignore
 # Logs
 logs
 *.log
