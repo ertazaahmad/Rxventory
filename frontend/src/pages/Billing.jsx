@@ -74,6 +74,7 @@ const Billing = () => {
     });
   };
 
+
   const [invoiceMeta, setInvoiceMeta] = useState({
     invoiceNo: "",
     date: "",
@@ -885,37 +886,59 @@ const Billing = () => {
                         value={item.qty}
                         min="0"
                         disabled={isFinalized}
-                        onChange={(e) => {
-                          const enteredQty = Number(e.target.value) || 0;
-                          if (enteredQty < 0) return;
+       onChange={(e) => {
+  let enteredQty = Number(e.target.value) || 0;
+  if (enteredQty < 0) return;
 
-                          const updated = [...billItems];
-                          const currentItem = updated[index];
+  const updated = [...billItems];
+  const currentItem = updated[index];
 
-                          const unit = currentItem.unit || "TABLET";
-                          const packSize = Number(currentItem.packSize) || 1;
+  const unit = currentItem.unit || "TABLET";
+  const packSize = Number(currentItem.packSize) || 1;
 
-                          // 🔢 tablets sold
-                          const tabletsSold =
-                            unit === "STRIP"
-                              ? enteredQty * packSize
-                              : enteredQty;
+  // 🔍 FIND INVENTORY ITEM (SAFE)
+  const inventoryItem = inventory.find(
+    (m) => m.id === currentItem.medicineId
+  );
 
-                          // 💾 SAVE QTY (THIS WAS MISSING)
-                          currentItem.qty = enteredQty;
+  // 🔒 CALCULATE MAX ALLOWED QTY
+  let maxAllowedQty = 0;
 
-                          // 💰 pricing (rate = strip price)
-                          const stripRate = Number(currentItem.rate || 0);
-                          const tabletRate = stripRate / packSize;
+  if (inventoryItem) {
+    if (unit === "TABLET") {
+      maxAllowedQty = Number(inventoryItem.total || 0);
+    } else {
+      maxAllowedQty = Number(inventoryItem.qty || 0);
+    }
+  }
 
-                          const baseAmount = tabletsSold * tabletRate;
-                          const gstAmount = (baseAmount * gstPercent) / 100;
+  // ❌ BLOCK OVERSELLING
+  if (enteredQty > maxAllowedQty) {
+    enteredQty = maxAllowedQty;
+  }
 
-                          currentItem.gstAmount = gstAmount;
-                          currentItem.amount = baseAmount + gstAmount;
+  currentItem.qty = enteredQty;
 
-                          setBillItems(updated);
-                        }}
+  // 🔢 tablets sold
+  const tabletsSold =
+    unit === "STRIP"
+      ? enteredQty * packSize
+      : enteredQty;
+
+  // 💰 pricing
+  const stripRate = Number(currentItem.rate || 0);
+  const tabletRate = stripRate / packSize;
+
+  const baseAmount = tabletsSold * tabletRate;
+  const gstAmount = (baseAmount * gstPercent) / 100;
+
+  currentItem.gstAmount = gstAmount;
+  currentItem.amount = baseAmount + gstAmount;
+
+  setBillItems(updated);
+}}
+
+
                         className="w-full text-right px-2"
                         autoComplete="off"
                       />
