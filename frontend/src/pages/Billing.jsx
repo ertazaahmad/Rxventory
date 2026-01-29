@@ -31,6 +31,8 @@ const Billing = () => {
   const [inventory, setInventory] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
     left: 0,
@@ -459,6 +461,10 @@ const Billing = () => {
 
       // 3️⃣ Lock UI
       setBillStatus("FINALIZED");
+      // ✅ show success popup
+      setShowSaveSuccess(true);
+setTimeout(() => setShowSaveSuccess(false), 2000);
+
     } catch (error) {
       console.error("Error finalizing bill:", error);
       alert("Failed to save bill. Please try again.");
@@ -676,9 +682,13 @@ const Billing = () => {
             primaryAction,
             {
               label: "NEW BILL",
-              className:
-                "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
-              onClick: () => handleNewBill(),
+  className: billStatus === "FINALIZED"
+    ? "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500"
+    : "rounded-xl bg-gray-300 cursor-not-allowed opacity-60",
+  onClick: () => {
+    if (billStatus !== "FINALIZED") return;
+    handleNewBill();
+  },
             },
           ]}
           showSearch={false}
@@ -1256,6 +1266,11 @@ const Billing = () => {
             </div>
           )}
         </main>
+           {showSaveSuccess && (
+        <div className="fixed top-6 right-6 z-[9999] bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+          ✅ Bill saved successfully
+        </div>
+      )}
       </div>
     </div>
   );
