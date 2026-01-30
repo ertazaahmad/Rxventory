@@ -80,6 +80,38 @@ export const AuthProvider = ({ children }) => {
     };
   }, []);
 
+
+
+
+
+useEffect(() => {
+  if (!userDoc?.proValidTill) return;
+
+  const interval = setInterval(() => {
+    const now = Date.now();
+    const expiry = userDoc.proValidTill.toMillis();
+
+    if (userDoc.plan === "pro" && expiry <= now) {
+      console.log("🔻 Pro expired → switching to Free");
+
+      // Option 1: reload page
+      window.location.reload();
+
+      // Option 2 (better): just update UI state
+      // setIsPro(false)
+    }
+  }, 10 * 1000); // check every 10 seconds
+
+  return () => clearInterval(interval);
+}, [userDoc]);
+
+
+
+
+
+
+
+
   return (
     <AuthContext.Provider value={{ user, userDoc }}>
       {!loading && children}

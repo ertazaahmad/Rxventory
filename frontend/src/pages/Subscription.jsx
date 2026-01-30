@@ -103,7 +103,7 @@ onPaymentSuccess: function () {
     <div className="min-h-screen bg-black flex items-center justify-center text-white py-6 sm:py-12 px-4">
       {/* Outer Container */}
       <div className="w-full max-w-6xl border border-white/20 rounded-2xl px-4 sm:px-6 py-4 sm:py-6 
-                      relative bg-gradient-to-b from-white/6 to-white/0 backdrop-blur-md">
+                      relative bg-gradient-to-black from-white/6 to-white/0 backdrop-blur-md">
         
         {/* Top Bar */}
         <div className="flex justify-center items-center mb-4 sm:mb-6">
