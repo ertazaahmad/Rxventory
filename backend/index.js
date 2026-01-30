@@ -25,15 +25,33 @@ app.use(
 /* =========================
    FIREBASE ADMIN INIT
 ========================= */
-if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-  const serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+if (
+  process.env.FIREBASE_PROJECT_ID &&
+  process.env.FIREBASE_CLIENT_EMAIL &&
+  process.env.FIREBASE_PRIVATE_KEY
+) {
   admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    }),
   });
   console.log("✅ Firebase Admin initialized");
 } else {
-  console.log("⚠️ Firebase Admin NOT initialized");
+  console.log("⚠️ Firebase Admin NOT initialized (env vars missing)");
 }
+
+
+
+
+console.log("ENV CHECK", {
+  project: !!process.env.FIREBASE_PROJECT_ID,
+  email: !!process.env.FIREBASE_CLIENT_EMAIL,
+  key: !!process.env.FIREBASE_PRIVATE_KEY,
+});
+
+
 
 /* =========================
    CASHFREE CONFIG
