@@ -16,6 +16,8 @@ import { useNavigate } from "react-router-dom";
 
 const Inventory = () => {
   const { user, userDoc } = useAuth();
+  const userPlan = userDoc?.plan || "free";
+
   const [medicines, setMedicines] = useState([]);
   const [editingCell, setEditingCell] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -113,10 +115,11 @@ const calculateInventory = (qty, pack, minStock) => {
   if (!user) return;
 
   // 🔒 FREE PLAN LIMIT
-  if (userDoc?.plan === "free" && medicines.length >= 10) {
-    setShowUpgradePopup(true);
-    return;
-  }
+ if (userPlan === "free" && medicines.length >= 10) {
+  setShowUpgradePopup(true);
+  return;
+}
+
 
   const ref = collection(db, "users", user.uid, "medicines");
 

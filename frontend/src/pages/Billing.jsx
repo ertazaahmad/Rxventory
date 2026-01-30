@@ -16,6 +16,8 @@ import { useNavigate } from "react-router-dom";
 
 const Billing = () => {
   const { user, userDoc } = useAuth();
+  const userPlan = userDoc?.plan || "free";
+
   const [userData, setUserData] = useState(null);
   const [pharmacyName, setPharmacyName] = useState("");
   const [pharmacyAddress, setPharmacyAddress] = useState("");
@@ -34,6 +36,8 @@ const Billing = () => {
   const [activeRow, setActiveRow] = useState(null);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [expiredWarning, setExpiredWarning] = useState("");
+
 
 
   const [dropdownPosition, setDropdownPosition] = useState({
@@ -234,10 +238,10 @@ const Billing = () => {
 
   const addRowAt = (index) => {
     if (billStatus === "FINALIZED") return;
-    if (userDoc?.plan === "free" && billItems.length >= 3) {
-      setShowUpgradePopup(true);
-      return;
-    }
+   if (userPlan === "free" && billItems.length >= 3) {
+  setShowUpgradePopup(true);
+  return;
+}
 
     const updated = [...billItems];
     updated.splice(index, 0, createEmptyRow());
@@ -467,6 +471,19 @@ className: `
         };
 
   const fillMedicineRow = (index, medicine) => {
+
+    if (medicine.expiry) {
+  const expiryDate = new Date(medicine.expiry + "-01");
+  const today = new Date();
+
+  if (expiryDate < today) {
+    setExpiredWarning("❌ This medicine is expired");
+    setTimeout(() => setExpiredWarning(""), 2000);
+    return; // 🚫 BLOCK ADDING
+  }
+}
+
+
     const updated = [...billItems];
 
     updated[index] = {
@@ -1248,6 +1265,13 @@ className: `
             </div>
           )}
         </main>
+
+{expiredWarning && (
+  <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+    {expiredWarning}
+  </div>
+)}
+
         {showSaveSuccess && (
           <div className="fixed top-6 right-6 z-[9999] bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
             ✅ Bill saved successfully
