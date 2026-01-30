@@ -8,6 +8,7 @@ import {
   collection,
   getDocs,
   serverTimestamp,
+  runTransaction,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import Actionbar from "../components/Actionbar.jsx";
@@ -32,6 +33,8 @@ const Billing = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [activeRow, setActiveRow] = useState(null);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
 
   const [dropdownPosition, setDropdownPosition] = useState({
     top: 0,
@@ -92,27 +95,36 @@ const Billing = () => {
 
   const isFinalized = billStatus === "FINALIZED";
 
-  const generateInvoiceNumber = async () => {
-    const ref = doc(db, "counters", "invoices");
-    const snap = await getDoc(ref);
+  const generateInvoiceNumber = async (db, userId) => {
+    const year = new Date().getFullYear(); // 2026
+    const userRef = doc(db, "users", userId);
 
-    let newInvoiceNo;
+    const invoiceNo = await runTransaction(db, async (transaction) => {
+      const userSnap = await transaction.get(userRef);
 
-    if (snap.exists()) {
-      const last = Number(snap.data().lastInvoiceNo || 0);
-      newInvoiceNo = last + 1;
-      await updateDoc(ref, { lastInvoiceNo: newInvoiceNo });
-    } else {
-      newInvoiceNo = 1;
-      await setDoc(ref, { lastInvoiceNo: 1 });
-    }
+      if (!userSnap.exists()) {
+        throw new Error("User document does not exist");
+      }
 
-    return newInvoiceNo;
+      const data = userSnap.data();
+      const invoiceCounters = data.invoiceCounters || {};
+
+      const currentCount = invoiceCounters[year] || 0;
+      const newCount = currentCount + 1;
+
+      transaction.update(userRef, {
+        [`invoiceCounters.${year}`]: newCount,
+      });
+
+      const padded = String(newCount).padStart(4, "0");
+      return `INV-${year}-${padded}`;
+    });
+
+    return invoiceNo;
   };
 
   const handleNewBill = async () => {
-    // DO NOT restore inventory - NEW BILL means the previous bill is finalized
-    // Inventory has already been deducted during billing
+  setBillStatus("DRAFT");
 
     localStorage.removeItem("billingDraft");
 
@@ -125,39 +137,12 @@ const Billing = () => {
     // Reset to single empty row
     setBillItems([createEmptyRow()]);
 
-    const invoiceNo = await generateInvoiceNumber();
     const now = new Date();
 
-    // 🔹 CREATE BILL DOCUMENT (DRAFT)
-    if (user) {
-      const billRef = doc(db, "users", user.uid, "bills", String(invoiceNo));
-
-      await setDoc(billRef, {
-        invoiceNo: invoiceNo,
-        patient: {
-          name: "",
-          address: "",
-          doctor: "",
-        },
-        items: [],
-        totals: {
-          subtotal: 0,
-          gst: 0,
-          grandTotal: 0,
-        },
-        status: "DRAFT", // 🔴 IMPORTANT
-        createdAt: serverTimestamp(),
-      });
-    }
-
     setInvoiceMeta({
-      invoiceNo: invoiceNo,
-      date: now.toLocaleDateString("en-IN"),
-      time: now.toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-      }),
+      invoiceNo: "",
+      date: "",
+      time: "",
     });
   };
 
@@ -272,6 +257,13 @@ const Billing = () => {
         if (data.billItems && data.billItems.length) {
           setBillItems(data.billItems);
         }
+
+  setInvoiceMeta({
+        invoiceNo: "",
+        date: "",
+        time: "",
+      });
+
       } catch (error) {
         console.error("Error restoring draft:", error);
       }
@@ -280,42 +272,18 @@ const Billing = () => {
     setIsInitialized(true);
   }, []); // Only run once on mount
 
-  useEffect(() => {
-    const syncBillStatus = async () => {
-      if (!user || !invoiceMeta.invoiceNo) return;
-
-      const billRef = doc(
-        db,
-        "users",
-        user.uid,
-        "bills",
-        String(invoiceMeta.invoiceNo),
-      );
-
-      const billSnap = await getDoc(billRef);
-
-      if (billSnap.exists()) {
-        const data = billSnap.data();
-        if (data.status) {
-          setBillStatus(data.status);
-        }
-      }
-    };
-
-    syncBillStatus();
-  }, [user, invoiceMeta.invoiceNo]);
-
   // Generate first invoice if no draft exists
-  useEffect(() => {
-    if (!isInitialized || loadingUserData || showPopup) return;
+useEffect(() => {
+  if (!isInitialized || loadingUserData || showPopup) return;
 
-    const savedDraft = localStorage.getItem("billingDraft");
+  const savedDraft = localStorage.getItem("billingDraft");
 
-    // Only generate new invoice if there's no draft AND no current invoice
-    if (!savedDraft && !invoiceMeta.invoiceNo) {
-      handleNewBill();
-    }
-  }, [isInitialized, loadingUserData, showPopup]);
+  // If no draft exists, initialize a new empty draft ONCE
+  if (!savedDraft && billItems.length === 1 && !billItems[0].generic) {
+    handleNewBill();
+  }
+}, [isInitialized, loadingUserData, showPopup]);
+
 
   // SAVE DRAFT whenever patient or invoiceMeta changes (but not on first mount)
   // Debounced to prevent interference with typing
@@ -388,94 +356,106 @@ const Billing = () => {
   const totals = calculateTotals();
 
   const finalizeBill = async () => {
-    try {
-      // Safety check
-      if (billStatus === "FINALIZED") {
-        window.print();
-        return;
-      }
 
-      // 1️⃣ Deduct inventory ONCE
-      for (const item of billItems) {
-        if (!item.medicineId || !item.qty) continue;
+    if (isSaving) return; // 🔒 HARD LOCK
+  setIsSaving(true);
 
-        const medRef = doc(db, "users", user.uid, "medicines", item.medicineId);
-        const medSnap = await getDoc(medRef);
-
-        if (!medSnap.exists()) continue;
-
-        // 🔹 READ INVENTORY DATA
-        const medData = medSnap.data();
-
-        // Total tablets available in inventory
-        const totalTablets = Number(medData.total) || 0;
-
-        // 🔹 CALCULATE TABLETS SOLD BASED ON UNIT
-        const unit = item.unit || "TABLET";
-        const packSize = Number(medData.pack) || 1;
-
-        // 🔹 CALCULATE TABLETS SOLD BASED ON UNIT
-        const tabletsSold =
-          (item.unit || "TABLET") === "STRIP"
-            ? Number(item.qty) * packSize
-            : Number(item.qty);
-
-        // 🔹 CHECK STOCK
-        if (tabletsSold > totalTablets) {
-          alert(`Insufficient stock for ${item.generic}`);
-          return;
-        }
-
-        // 🔹 DEDUCT TABLETS
-        const newTotal = totalTablets - tabletsSold;
-
-        // 🔹 CONVERT BACK TO STRIPS
-        const newQty = Math.floor(newTotal / packSize);
-
-        // 🔹 UPDATE INVENTORY
-        await updateDoc(medRef, {
-          total: newTotal,
-          qty: newQty,
-        });
-      }
-
-      // 2️⃣ Update bill status to FINALIZED
-      const billRef = doc(
-        db,
-        "users",
-        user.uid,
-        "bills",
-        String(invoiceMeta.invoiceNo),
-      );
-
-      await setDoc(
-        billRef,
-        {
-          status: "FINALIZED",
-          items: billItems,
-          totals,
-          finalizedAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-
-      // 3️⃣ Lock UI
-      setBillStatus("FINALIZED");
-      // ✅ show success popup
-      setShowSaveSuccess(true);
-setTimeout(() => setShowSaveSuccess(false), 2000);
-
-    } catch (error) {
-      console.error("Error finalizing bill:", error);
-      alert("Failed to save bill. Please try again.");
+  try {
+    if (billStatus === "FINALIZED") {
+      window.print();
+      return;
     }
-  };
+
+    // 1️⃣ VALIDATE ITEMS
+    if (!billItems.length || billItems.every(i => !i.qty)) {
+      alert("Add at least one medicine");
+      return;
+    }
+
+    // 2️⃣ CHECK & DEDUCT INVENTORY FIRST
+    for (const item of billItems) {
+      if (!item.medicineId || !item.qty) continue;
+
+      const medRef = doc(db, "users", user.uid, "medicines", item.medicineId);
+      const medSnap = await getDoc(medRef);
+
+      if (!medSnap.exists()) continue;
+
+      const medData = medSnap.data();
+      const totalTablets = Number(medData.total) || 0;
+      const packSize = Number(medData.pack) || 1;
+
+      const tabletsSold =
+        item.unit === "STRIP"
+          ? Number(item.qty) * packSize
+          : Number(item.qty);
+
+      if (tabletsSold > totalTablets) {
+        alert(`Insufficient stock for ${item.generic}`);
+        return; // 🚫 NO invoice generated
+      }
+
+      const newTotal = totalTablets - tabletsSold;
+      const newQty = Math.floor(newTotal / packSize);
+
+      await updateDoc(medRef, {
+        total: newTotal,
+        qty: newQty,
+      });
+    }
+
+    // 🔥 3️⃣ NOW generate invoice number (SAFE POINT)
+    const invoiceNo = await generateInvoiceNumber(db, user.uid);
+
+    const now = new Date();
+
+    // 4️⃣ CREATE BILL
+    const billRef = doc(db, "users", user.uid, "bills", invoiceNo);
+
+    await setDoc(billRef, {
+      invoiceNo,
+      patient,
+      items: billItems,
+      totals,
+      status: "FINALIZED",
+      createdAt: serverTimestamp(),
+      finalizedAt: serverTimestamp(),
+    });
+
+    // 5️⃣ UPDATE UI
+    setInvoiceMeta({
+      invoiceNo,
+      date: now.toLocaleDateString("en-IN"),
+      time: now.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }),
+    });
+
+    setBillStatus("FINALIZED");
+    setShowSaveSuccess(true);
+    setTimeout(() => setShowSaveSuccess(false), 2000);
+
+  } catch (error) {
+    console.error("Error finalizing bill:", error);
+    alert("Failed to save bill. Please try again.");
+  } finally {
+    setIsSaving(false); // 🔓 UNLOCK
+  }
+};
 
   const primaryAction =
     billStatus === "DRAFT"
       ? {
-          label: "SAVE BILL",
-          onClick: finalizeBill,
+         label: isSaving ? "SAVING..." : "SAVE BILL",
+onClick: finalizeBill,
+className: `
+  focus:ring-green-900/60 rounded-xl
+  ${isSaving
+    ? "bg-green-300 cursor-not-allowed opacity-60"
+    : "bg-green-400 hover:bg-green-500"}
+`,
           className:
             "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
         }
@@ -682,13 +662,14 @@ setTimeout(() => setShowSaveSuccess(false), 2000);
             primaryAction,
             {
               label: "NEW BILL",
-  className: billStatus === "FINALIZED"
-    ? "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500"
-    : "rounded-xl bg-gray-300 cursor-not-allowed opacity-60",
-  onClick: () => {
-    if (billStatus !== "FINALIZED") return;
-    handleNewBill();
-  },
+              className:
+                billStatus === "FINALIZED"
+                  ? "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500"
+                  : "rounded-xl bg-gray-300 cursor-not-allowed opacity-60",
+              onClick: () => {
+                if (billStatus !== "FINALIZED") return;
+                handleNewBill();
+              },
             },
           ]}
           showSearch={false}
@@ -707,23 +688,22 @@ setTimeout(() => setShowSaveSuccess(false), 2000);
               }}
             >
               {suggestions.map((med, i) => (
-               <div
-  key={med.id}
-  onClick={() => {
-    fillMedicineRow(activeRow, med);
-    setSuggestions([]);
-    setActiveRow(null);
-    setHighlightIndex(-1);
-  }}
-  className={`px-2 py-1 cursor-pointer ${
-    i === highlightIndex
-      ? "bg-blue-500 text-white"
-      : "hover:bg-blue-100"
-  }`}
->
-  {med.generic}
-</div>
-
+                <div
+                  key={med.id}
+                  onClick={() => {
+                    fillMedicineRow(activeRow, med);
+                    setSuggestions([]);
+                    setActiveRow(null);
+                    setHighlightIndex(-1);
+                  }}
+                  className={`px-2 py-1 cursor-pointer ${
+                    i === highlightIndex
+                      ? "bg-blue-500 text-white"
+                      : "hover:bg-blue-100"
+                  }`}
+                >
+                  {med.generic}
+                </div>
               ))}
             </div>
           )}
@@ -929,39 +909,41 @@ setTimeout(() => setShowSaveSuccess(false), 2000);
                           setTypingTimeout(timeout);
                         }}
                         onKeyDown={(e) => {
-  if (!suggestions.length) return;
+                          if (!suggestions.length) return;
 
-  // ⬇ Arrow Down
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    setHighlightIndex((prev) =>
-      prev < suggestions.length - 1 ? prev + 1 : 0
-    );
-  }
+                          // ⬇ Arrow Down
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setHighlightIndex((prev) =>
+                              prev < suggestions.length - 1 ? prev + 1 : 0,
+                            );
+                          }
 
-  // ⬆ Arrow Up
-  if (e.key === "ArrowUp") {
-    e.preventDefault();
-    setHighlightIndex((prev) =>
-      prev > 0 ? prev - 1 : suggestions.length - 1
-    );
-  }
+                          // ⬆ Arrow Up
+                          if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setHighlightIndex((prev) =>
+                              prev > 0 ? prev - 1 : suggestions.length - 1,
+                            );
+                          }
 
-  // ⏎ Enter → select
-  if (e.key === "Enter" && highlightIndex >= 0) {
-    e.preventDefault();
-    fillMedicineRow(activeRow, suggestions[highlightIndex]);
-    setSuggestions([]);
-    setActiveRow(null);
-  }
+                          // ⏎ Enter → select
+                          if (e.key === "Enter" && highlightIndex >= 0) {
+                            e.preventDefault();
+                            fillMedicineRow(
+                              activeRow,
+                              suggestions[highlightIndex],
+                            );
+                            setSuggestions([]);
+                            setActiveRow(null);
+                          }
 
-  // ⎋ Escape → close dropdown
-  if (e.key === "Escape") {
-    setSuggestions([]);
-    setActiveRow(null);
-  }
-}}
-
+                          // ⎋ Escape → close dropdown
+                          if (e.key === "Escape") {
+                            setSuggestions([]);
+                            setActiveRow(null);
+                          }
+                        }}
                         className="w-full px-2 "
                         placeholder="Type generic name..."
                         autoComplete="off"
@@ -1266,11 +1248,11 @@ setTimeout(() => setShowSaveSuccess(false), 2000);
             </div>
           )}
         </main>
-           {showSaveSuccess && (
-        <div className="fixed top-6 right-6 z-[9999] bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
-          ✅ Bill saved successfully
-        </div>
-      )}
+        {showSaveSuccess && (
+          <div className="fixed top-6 right-6 z-[9999] bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm">
+            ✅ Bill saved successfully
+          </div>
+        )}
       </div>
     </div>
   );

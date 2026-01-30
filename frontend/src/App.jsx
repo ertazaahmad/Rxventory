@@ -8,6 +8,8 @@ import Subscription from "./pages/Subscription.jsx";
 
 import Nav from "./components/nav.jsx";
 import Footer from "./components/Footer.jsx";
+import NotFound from "./pages/NotFound";
+
 
 const App = () => {
 
@@ -24,6 +26,7 @@ const App = () => {
             <Route path="/inventory" element={<Inventory />} />
             <Route path="/billing" element={<Billing />} />
             <Route path="/subscription" element={<Subscription />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
 
