@@ -80,24 +80,10 @@ cashfree.checkout({
   paymentSessionId: order.payment_session_id,
   redirectTarget: "_modal",
 
-onPaymentSuccess: async function () {
-  try {
-    await fetch("http://localhost:5000/activate-pro", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${idToken}`,
-      },
-    });
-  } catch (err) {
-    console.error("Activation failed", err);
-  }
+onPaymentSuccess: function () {
+  // Just refresh or redirect
+  window.location.reload();
 },
-
-
-
-
-
   onPaymentFailure: function (data) {
     console.log("Payment failed:", data);
     alert("Payment failed or cancelled");
