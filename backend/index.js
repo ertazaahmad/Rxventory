@@ -135,9 +135,7 @@ app.post("/create-order", async (req, res) => {
   uid: decoded.uid,
 },
 order_meta: {
-  return_url: "https://your-app.com/payment-success",
-  notify_url:
-    "https://nonpunctuating-brittney-overcool.ngrok-free.dev/cashfree-webhook",
+  return_url: "https://rxventory.vercel.app/payment-success",
 },
 
     };
