@@ -1,15 +1,17 @@
-export async function createOrder(amount, idToken) {
-  const res = await fetch("http://localhost:5000/create-order", {
+const API_BASE = "https://rxventory.onrender.com";
+
+export async function createOrder(idToken) {
+  const res = await fetch(`${API_BASE}/create-order`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      amount,
-      idToken,
-    }),
+    body: JSON.stringify({ idToken }),
   });
 
-  const data = await res.json();
-  return data;
+  if (!res.ok) {
+    throw new Error("Create order failed");
+  }
+
+  return res.json();
 }

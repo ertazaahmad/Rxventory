@@ -67,7 +67,7 @@ if (isProActive) {
     const idToken = await user.getIdToken();
 
     // 1️⃣ Create order from backend
-   const order = await createOrder(price, idToken);
+   const order = await createOrder(idToken);
 
 
     if (!order?.payment_session_id) {
