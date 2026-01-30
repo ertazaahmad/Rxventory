@@ -175,10 +175,16 @@ app.post("/cashfree-webhook", async (req, res) => {
     console.log("✅ Cashfree signature verified");
 
     const body = JSON.parse(rawBody);
+const paymentStatus = body?.data?.payment?.payment_status;
+const uid = body?.data?.order?.order_tags?.uid;
+const paymentId = body?.data?.payment?.cf_payment_id;
+const orderId = body?.data?.order?.order_id;
 
-    const paymentStatus = body?.data?.payment?.payment_status;
-    const uid = body?.data?.order?.order_tags?.uid;
-    const paymentId = body?.data?.payment?.cf_payment_id;
+if (!uid || !orderId) {
+  console.log("❌ Missing uid or orderId", { uid, orderId });
+  return res.status(400).send("Invalid webhook payload");
+}
+
 
     if (!uid) {
       console.log("❌ Webhook missing uid");
@@ -190,7 +196,17 @@ app.post("/cashfree-webhook", async (req, res) => {
     }
 
     // Prevent duplicate webhook
-    const paymentRef = admin.firestore().collection("payments").doc(paymentId);
+   if (!paymentId) {
+  console.log("❌ Missing cf_payment_id for SUCCESS payment", body.data);
+  return res.status(400).send("Missing paymentId");
+}
+
+// Prevent duplicate webhook (idempotent & safe)
+const paymentRef = admin
+  .firestore()
+  .collection("payments")
+  .doc(`${orderId}_${paymentId}`);
+
     const existing = await paymentRef.get();
 
     if (existing.exists) {
@@ -204,6 +220,12 @@ app.post("/cashfree-webhook", async (req, res) => {
       amount: body.data.payment.payment_amount,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+
+await admin.firestore().collection("orders").doc(orderId).update({
+  status: "SUCCESS",
+  paidAt: admin.firestore.FieldValue.serverTimestamp(),
+});
+
 
     const proValidTill = new Date(
       Date.now() + 30 * 24 * 60 * 60 * 1000
