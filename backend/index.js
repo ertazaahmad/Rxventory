@@ -136,6 +136,7 @@ app.post("/create-order", async (req, res) => {
 },
 order_meta: {
   return_url: "https://rxventory.vercel.app/payment-success",
+  notify_url: "https://rxventory.onrender.com/cashfree-webhook",
 },
 
     };
