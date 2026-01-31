@@ -377,8 +377,6 @@ const filteredMedicines = medicines.filter((med) => {
     </span>
   )}
 </div>
-
-
       </div>
 
       <Actionbar
@@ -392,11 +390,93 @@ const filteredMedicines = medicines.filter((med) => {
           },
           {
             label: "Print",
-            className: "bg-blue-500 hover:bg-blue-600 rounded-lg px-3",
+            className: "hidden md:inline-flex bg-blue-500 hover:bg-blue-600 rounded-lg px-3",
             onClick: () => window.print(),
           },
+          {
+  label: "Filter",
+  className:
+    "relative bg-violet-500 hover:bg-violet-600 rounded-lg px-3 inline-flex",
+  onClick: () => setIsOpen((prev) => !prev),
+},
         ]}
       />
+
+      {isOpen && (
+  <div className="relative flex justify-end mt-2">
+    <div className="absolute top-full right-0 w-44 bg-white border p-2 rounded shadow-lg z-20 flex flex-col space-y-1">
+
+      {/* Out of Stock */}
+      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
+        <input
+          type="checkbox"
+          checked={selectedStatus.includes("Out of Stock")}
+          onChange={() => {
+            setSelectedStatus((prev) =>
+              prev.includes("Out of Stock")
+                ? prev.filter((s) => s !== "Out of Stock")
+                : [...prev, "Out of Stock"]
+            );
+          }}
+          className="mr-2"
+        />
+        Out of Stock
+      </label>
+
+      {/* Low Stock */}
+      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
+        <input
+          type="checkbox"
+          checked={selectedStatus.includes("Low Stock")}
+          onChange={() => {
+            setSelectedStatus((prev) =>
+              prev.includes("Low Stock")
+                ? prev.filter((s) => s !== "Low Stock")
+                : [...prev, "Low Stock"]
+            );
+          }}
+          className="mr-2"
+        />
+        Low Stock
+      </label>
+
+      {/* Near Expiry */}
+      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
+        <input
+          type="checkbox"
+          checked={selectedStatus.includes("Near Expiry")}
+          onChange={() => {
+            setSelectedStatus((prev) =>
+              prev.includes("Near Expiry")
+                ? prev.filter((s) => s !== "Near Expiry")
+                : [...prev, "Near Expiry"]
+            );
+          }}
+          className="mr-2"
+        />
+        Near Expiry
+      </label>
+
+      {/* Expired */}
+      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
+        <input
+          type="checkbox"
+          checked={selectedStatus.includes("Expired")}
+          onChange={() => {
+            setSelectedStatus((prev) =>
+              prev.includes("Expired")
+                ? prev.filter((s) => s !== "Expired")
+                : [...prev, "Expired"]
+            );
+          }}
+          className="mr-2"
+        />
+        Expired
+      </label>
+    </div>
+  </div>
+)}
+
 
       {/* ===== MAIN TABLE ===== */}
       <div className="mt-4 overflow-x-auto rounded-lg border border-gray-300" id="print-area">
@@ -661,97 +741,7 @@ updateDoc(ref, {
               <th className="border p-2">Unit</th>
               <th className="border p-2">Rate</th>
               <th className="border p-2">Min</th>
-              <th className="border p-2">
-                <div className="relative inline-flex items-center gap-2">
-                  <span>Status</span>
-
-                  <button
-                    onClick={() => {
-                      setIsOpen(!isOpen);
-                    }}
-                    className=" flex items-center gap-1 focus:outline-none"
-                  >
-                    <svg
-                      className={`h-6 w-6 mt-1 transition-transform duration-300 ${
-                        !isOpen ? "rotate-0" : "rotate-180"
-                      }`}
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                    >
-                      <path d="M11.9999 13.1714L16.9497 8.22168L18.3639 9.63589L11.9999 15.9999L5.63599 9.63589L7.0502 8.22168L11.9999 13.1714Z"></path>
-                    </svg>
-                  </button>
-
-                  {isOpen && (
-                    <div className="dropdown fixed w-33  mt-40  bg-white border p-2 rounded shadow-lg  z-10 flex flex-col space-y-1 items-start">
-                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
-                        <input
-                          type="checkbox"
-                          checked={selectedStatus.includes("Out of Stock")}
-                          onChange={() => {
-                            setSelectedStatus((prev) =>
-                              prev.includes("Out of Stock")
-                                ? prev.filter((s) => s !== "Out of Stock")
-                                : [...prev, "Out of Stock"]
-                            );
-                          }}
-                          className="mr-2"
-                        />
-                        Out of Stock
-                      </label>
-
-                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
-                        <input
-                          type="checkbox"
-                          checked={selectedStatus.includes("Low Stock")}
-                          onChange={() => {
-                            setSelectedStatus((prev) =>
-                              prev.includes("Low Stock")
-                                ? prev.filter((s) => s !== "Low Stock")
-                                : [...prev, "Low Stock"]
-                            );
-                          }}
-                          className="mr-2"
-                        />
-                        Low Stock
-                      </label>
-
-                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
-                         <input
-                          type="checkbox"
-                          checked={selectedStatus.includes("Near Expiry")}
-                          onChange={() => {
-                            setSelectedStatus((prev) =>
-                              prev.includes("Near Expiry")
-                                ? prev.filter((s) => s !== "Near Expiry")
-                                : [...prev, "Near Expiry"]
-                            );
-                          }}
-                          className="mr-2"
-                        />
-                        Near Expiry
-                      </label>
-
-                      <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
-                         <input
-                          type="checkbox"
-                          checked={selectedStatus.includes("Expired")}
-                          onChange={() => {
-                            setSelectedStatus((prev) =>
-                              prev.includes("Expired")
-                                ? prev.filter((s) => s !== "Expired")
-                                : [...prev, "Expired"]
-                            );
-                          }}
-                          className="mr-2"
-                        />
-                        Expired
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </th>
+              <th className="border p-2">Status</th>
               <th className="border p-2 no-print">Actions</th>
             </tr>
           </thead>
