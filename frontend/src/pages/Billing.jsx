@@ -251,64 +251,66 @@ const Billing = () => {
     setBillItems(updated);
   };
 
-  // RESTORE DRAFT ON MOUNT (runs only once)
-  useEffect(() => {
-    const savedDraft = localStorage.getItem("billingDraft");
+ // RESTORE DRAFT ON MOUNT (runs only once)
+useEffect(() => {
+  const savedDraft = localStorage.getItem("billingDraft");
 
-    if (savedDraft) {
-      try {
-        const data = JSON.parse(savedDraft);
+  if (savedDraft) {
+    try {
+      const data = JSON.parse(savedDraft);
 
+      // ✅ ONLY restore DRAFT bills, not FINALIZED
+      if (data.billStatus === "DRAFT") {
         if (data.patient) setPatient(data.patient);
         if (data.invoiceMeta) setInvoiceMeta(data.invoiceMeta);
         if (data.billItems && data.billItems.length) {
           setBillItems(data.billItems);
         }
-
-  setInvoiceMeta({
-        invoiceNo: "",
-        date: "",
-        time: "",
-      });
-
-      } catch (error) {
-        console.error("Error restoring draft:", error);
+        setBillStatus("DRAFT");
+      } else {
+        // Clear finalized bills
+        localStorage.removeItem("billingDraft");
       }
+    } catch (error) {
+      console.error("Error restoring draft:", error);
+      localStorage.removeItem("billingDraft");
     }
-
-    setIsInitialized(true);
-  }, []); // Only run once on mount
-
-  // Generate first invoice if no draft exists
-useEffect(() => {
-  if (!isInitialized || loadingUserData || showPopup) return;
-
-  const savedDraft = localStorage.getItem("billingDraft");
-
-  // If no draft exists, initialize a new empty draft ONCE
-  if (!savedDraft && billItems.length === 1 && !billItems[0].generic) {
-    handleNewBill();
   }
-}, [isInitialized, loadingUserData, showPopup]);
 
+  setIsInitialized(true);
+}, []);
 
-  // SAVE DRAFT whenever patient or invoiceMeta changes (but not on first mount)
-  // Debounced to prevent interference with typing
-  useEffect(() => {
-    if (!isInitialized) return;
+// REMOVE THIS ENTIRE useEffect - it's causing issues
+// useEffect(() => {
+//   if (!isInitialized || loadingUserData || showPopup) return;
+//   const savedDraft = localStorage.getItem("billingDraft");
+//   if (!savedDraft && billItems.length === 1 && !billItems[0].generic) {
+//     handleNewBill();
+//   }
+// }, [isInitialized, loadingUserData, showPopup]);
 
-    const timeoutId = setTimeout(() => {
-      const draftBill = {
-        patient,
-        invoiceMeta,
-        billItems,
-      };
+// SAVE DRAFT (with FINALIZED check)
+useEffect(() => {
+  if (!isInitialized) return;
+  
+  // ✅ DON'T SAVE FINALIZED BILLS
+  if (billStatus === "FINALIZED") {
+    return;
+  }
 
-      localStorage.setItem("billingDraft", JSON.stringify(draftBill));
-    }, 500); // Wait 500ms after last change before saving
+  const timeoutId = setTimeout(() => {
+    const draftBill = {
+      patient,
+      invoiceMeta,
+      billItems,
+      billStatus: "DRAFT", // ✅ Always save as DRAFT
+    };
 
-    return () => clearTimeout(timeoutId);
-  }, [patient, invoiceMeta, billItems, isInitialized]);
+    localStorage.setItem("billingDraft", JSON.stringify(draftBill));
+  }, 500);
+
+  return () => clearTimeout(timeoutId);
+}, [patient, invoiceMeta, billItems, billStatus, isInitialized]);
 
   // Fetch inventory
   const fetchInventory = async () => {
@@ -448,6 +450,9 @@ useEffect(() => {
     });
 
     setBillStatus("FINALIZED");
+   // ✅✅✅ CRITICAL: CLEAR DRAFT FROM LOCALSTORAGE AFTER FINALIZING
+    localStorage.removeItem("billingDraft");
+
     setShowSaveSuccess(true);
     setTimeout(() => setShowSaveSuccess(false), 2000);
 
