@@ -84,24 +84,7 @@ const Inventory = () => {
     fetchUserData();
   }, [user]);
 
-  useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (
-      isOpen &&
-      filterRef.current &&
-      !filterRef.current.contains(event.target)
-    ) {
-      setIsOpen(false);
-    }
-  };
-
-  document.addEventListener("mousedown", handleClickOutside);
-
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, [isOpen]);
-
+  
 
   const shouldShowProfilePopup =
     !userData ||
@@ -425,7 +408,7 @@ const filteredMedicines = medicines.filter((med) => {
 
       {isOpen && (
   <div ref={filterRef} className="relative flex justify-end mt-2">
-    <div className="absolute top-full right-0 w-44 bg-white border p-2 rounded shadow-lg z-20 flex flex-col space-y-1">
+    <div className="absolute top-full md:left-100 w-44 bg-white border p-2 rounded shadow-lg z-20 flex flex-col space-y-1">
 
       {/* Out of Stock */}
       <label className="cursor-pointer hover:bg-gray-100 w-full p-1 rounded text-sm">
