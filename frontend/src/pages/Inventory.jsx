@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import {
   collection,
@@ -29,6 +29,8 @@ const Inventory = () => {
   const [selectedStatus, setSelectedStatus] = useState([]);
   const [showUpgradePopup, setShowUpgradePopup] = useState(false);
   const navigate = useNavigate();
+  const filterRef = useRef(null);
+
 
   /* ================= PROFILE POPUP ================= */
   const handleSaveProfile = async () => {
@@ -81,6 +83,25 @@ const Inventory = () => {
 
     fetchUserData();
   }, [user]);
+
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (
+      isOpen &&
+      filterRef.current &&
+      !filterRef.current.contains(event.target)
+    ) {
+      setIsOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, [isOpen]);
+
 
   const shouldShowProfilePopup =
     !userData ||
@@ -403,7 +424,7 @@ const filteredMedicines = medicines.filter((med) => {
       />
 
       {isOpen && (
-  <div className="relative flex justify-end mt-2">
+  <div ref={filterRef} className="relative flex justify-end mt-2">
     <div className="absolute top-full right-0 w-44 bg-white border p-2 rounded shadow-lg z-20 flex flex-col space-y-1">
 
       {/* Out of Stock */}
