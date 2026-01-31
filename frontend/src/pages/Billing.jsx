@@ -97,6 +97,9 @@ const Billing = () => {
     time: "",
   });
 
+  const isBillSaved = Boolean(invoiceMeta.invoiceNo);
+
+
   const isFinalized = billStatus === "FINALIZED";
 
   const generateInvoiceNumber = async (db, userId) => {
@@ -361,6 +364,13 @@ useEffect(() => {
 
   const finalizeBill = async () => {
 
+  // 🔒 BILL ALREADY SAVED → ONLY PRINT
+  if (invoiceMeta.invoiceNo) {
+    window.print();
+    return;
+  }
+
+
     if (isSaving) return; // 🔒 HARD LOCK
   setIsSaving(true);
 
@@ -449,26 +459,24 @@ useEffect(() => {
   }
 };
 
-  const primaryAction =
-    billStatus === "DRAFT"
-      ? {
-         label: isSaving ? "SAVING..." : "SAVE BILL",
-onClick: finalizeBill,
-className: `
-  focus:ring-green-900/60 rounded-xl
-  ${isSaving
-    ? "bg-green-300 cursor-not-allowed opacity-60"
-    : "bg-green-400 hover:bg-green-500"}
-`,
-          className:
-            "focus:ring-green-900/60 rounded-xl bg-green-400 hover:bg-green-500",
-        }
-      : {
-          label: "PRINT",
-          onClick: () => window.print(),
-          className:
-            "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
-        };
+  const primaryAction = !isBillSaved
+  ? {
+      label: isSaving ? "SAVING..." : "SAVE BILL",
+      onClick: finalizeBill,
+      className: `
+        focus:ring-green-900/60 rounded-xl
+        ${isSaving
+          ? "bg-green-300 cursor-not-allowed opacity-60"
+          : "bg-green-400 hover:bg-green-500"}
+      `,
+    }
+  : {
+      label: "PRINT",
+      onClick: () => window.print(),
+      className:
+        "focus:ring-blue-900/60 rounded-xl bg-blue-400 hover:bg-blue-500",
+    };
+
 
   const fillMedicineRow = (index, medicine) => {
 
@@ -1206,6 +1214,7 @@ className: `
                           type="number"
                           value={item.mrp || ""}
                           min="0"
+                          disabled={isFinalized}
                           onChange={(e) => {
                             const mrp = Number(e.target.value) || 0;
 
