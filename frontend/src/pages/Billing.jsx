@@ -618,6 +618,112 @@ className: `
 
 /* ================= END PRINT ================= */
 
+/* ================= MOBILE & TABLET RESPONSIVE (SCREEN ONLY) ================= */
+
+/* Mobile Styles (up to 600px) - SCREEN ONLY */
+@media screen and (max-width: 600px) {
+  /* Make table scrollable horizontally */
+  .table-container {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure table maintains minimum width */
+  .table-container table {
+    min-width: 1200px;
+  }
+
+  /* Reduce font sizes for mobile */
+  .table-container th,
+  .table-container td {
+    font-size: 10px !important;
+    padding: 4px !important;
+  }
+
+  .table-container input,
+  .table-container select {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
+  }
+
+  /* Make header section stack vertically on mobile */
+  .header-section {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  /* Footer section stack vertically */
+  .footer-section {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  .footer-section .left,
+  .footer-section .right {
+    width: 100% !important;
+  }
+
+  /* Adjust button sizes for mobile */
+  button {
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+  }
+
+  /* Popup adjustments for mobile */
+  .fixed.inset-0 > div {
+    max-width: 90% !important;
+    margin: 16px !important;
+  }
+
+  /* Action bar buttons wrap on mobile */
+  .flex.gap-2.flex-wrap {
+    gap: 8px !important;
+  }
+
+  /* Suggestions dropdown */
+  .fixed.z-\\[9999\\].bg-white {
+    max-height: 200px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* Tablet Styles (601px to 1024px) - SCREEN ONLY */
+@media screen and (min-width: 601px) and (max-width: 1024px) {
+  /* Reduce font sizes slightly for tablet */
+  .table-container th,
+  .table-container td {
+    font-size: 11px !important;
+    padding: 6px !important;
+  }
+
+  .table-container input,
+  .table-container select {
+    font-size: 11px !important;
+  }
+}
+
+/* Small mobile (up to 480px) - SCREEN ONLY */
+@media screen and (max-width: 480px) {
+  .table-container th,
+  .table-container td {
+    font-size: 9px !important;
+    padding: 3px !important;
+  }
+
+  .table-container input,
+  .table-container select {
+    font-size: 9px !important;
+    padding: 2px !important;
+  }
+
+  button {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+}
+
+/* ================= END RESPONSIVE ================= */
 
 
 `}</style>
