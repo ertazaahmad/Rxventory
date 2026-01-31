@@ -393,12 +393,12 @@ const filteredMedicines = medicines.filter((med) => {
             onClick: addEmptyMedicine,
           },
           {
-            label: "Print",
+            label: "PRINT",
             className: "hidden md:inline-flex bg-blue-500 hover:bg-blue-600 rounded-lg px-3",
             onClick: () => window.print(),
           },
           {
-  label: "Filter",
+  label: "FILTER",
   className:
     "relative bg-violet-500 hover:bg-violet-600 rounded-lg px-3 inline-flex",
   onClick: () => setIsOpen((prev) => !prev),
